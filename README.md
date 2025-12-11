@@ -3,3 +3,6 @@ AI Trouble Shooter contains debugging reports for identifiying error causes in f
 
 ## Claude Model Restriction Debugging
 [claude-model-restriction-debugging/claude_debugging_readme.md](claude-model-restriction-debugging/claude_debugging_readme.md)
+
+### TL;DR
+[claude-model-restriction-debugging/FINDINGS.md](claude-model-restriction-debugging/FINDINGS.md)
