@@ -35,7 +35,7 @@ See [FINDINGS.md](FINDINGS.md) for pattern summary and [reports/](reports/) for 
 
 ```
 claude-model-restriction-debugging/
-├── README.md (this file)
+├── claude_debugging_readme.md (this file)
 ├── FINDINGS.md (pattern summary across all reports)
 ├── methodology/
 │   └── testing-protocol.md (how to run tests)
@@ -74,5 +74,5 @@ If something isn't clear about how to run tests, structure findings, or interpre
 ---
 
 **Last Updated:** 2025-12-11  
-**Active Maintainer:** [Your identifier]  
+**Active Maintainer:** M. Finley, B.A. @ Pir8 Eye Web Solutions, LLC
 **License:** MIT
