@@ -1,4 +1,4 @@
-# ChatGPT Model Restriction Debugging
+# ChatGPT Model Authority Debugging
 
 Systematic documentation and testing of content engagement differentials using ChatGPT model.
 
