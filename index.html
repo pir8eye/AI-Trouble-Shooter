@@ -1,0 +1,2080 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Trouble Shooter · Pir8 Eye Web Solutions, LLC</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;600;800;900&family=Barlow:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════
+   DESIGN TOKENS
+═══════════════════════════════════════════ */
+:root {
+  --bg:      #080b10;
+  --panel:   #0e1420;
+  --panel2:  #111925;
+  --border:  #1a2535;
+  --border2: #243040;
+  --accent:  #00e5ff;
+  --accent2: #0099bb;
+  --warn:    #ff6b35;
+  --ok:      #39ff14;
+  --purple:  #9b7ff4;
+  --muted:   #3d5166;
+  --text:    #b8ccd8;
+  --bright:  #eaf2ff;
+  --shadow:  0 8px 32px rgba(0,0,0,0.6);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Barlow', sans-serif;
+  font-weight: 300;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Scanline */
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,229,255,0.012) 2px, rgba(0,229,255,0.012) 4px);
+  pointer-events: none;
+  z-index: 9998;
+}
+
+/* ═══════════════════════════════════════════
+   HEADER
+═══════════════════════════════════════════ */
+header {
+  background: linear-gradient(90deg, #0a1020 0%, #0d1525 50%, #0a1020 100%);
+  border-bottom: 1px solid var(--border2);
+  padding: 1.4rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  position: relative;
+  overflow: hidden;
+}
+header::before {
+  content: '';
+  position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: linear-gradient(180deg, transparent, var(--accent), transparent);
+}
+
+.logo-block { display: flex; flex-direction: column; gap: 0.2rem; }
+.logo-block h1 {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 900;
+  font-size: 2.1rem;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  line-height: 1;
+}
+.logo-skull { margin-right: 0.3rem; filter: drop-shadow(0 0 8px var(--accent)); }
+.logo-block .byline {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.62rem;
+  color: var(--muted);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.header-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3rem;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.62rem;
+  color: var(--muted);
+}
+.header-meta .live-time { color: var(--accent); opacity: 0.8; }
+.pill {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  background: rgba(0,229,255,0.08);
+  border: 1px solid rgba(0,229,255,0.2);
+  border-radius: 20px;
+  padding: 0.2rem 0.7rem;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.6rem;
+  color: var(--accent);
+  letter-spacing: 0.08em;
+}
+
+/* ═══════════════════════════════════════════
+   STATUS BAR
+═══════════════════════════════════════════ */
+.status-bar {
+  background: #060810;
+  border-bottom: 1px solid var(--border);
+  padding: 0.45rem 2rem;
+  display: flex;
+  gap: 1.8rem;
+  align-items: center;
+  flex-wrap: wrap;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--muted);
+}
+.si { display: flex; align-items: center; gap: 0.35rem; }
+.dot { width: 5px; height: 5px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 5px var(--ok); animation: blink 2.2s infinite; }
+.dot.w { background: var(--warn); box-shadow: 0 0 5px var(--warn); }
+.dot.p { background: var(--purple); box-shadow: 0 0 5px var(--purple); }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
+.status-bar .sess { margin-left: auto; color: var(--accent); }
+
+/* ═══════════════════════════════════════════
+   NAV TABS
+═══════════════════════════════════════════ */
+.nav-wrap {
+  background: var(--panel);
+  border-bottom: 1px solid var(--border2);
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.nav-wrap::-webkit-scrollbar { display: none; }
+.nav-tab {
+  padding: 0.9rem 1.4rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 600;
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+  display: flex; align-items: center; gap: 0.4rem;
+}
+.nav-tab:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+.nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); background: rgba(0,229,255,0.05); }
+
+/* ═══════════════════════════════════════════
+   LAYOUT
+═══════════════════════════════════════════ */
+.section { display: none; padding: 1.5rem 2rem; }
+.section.active { display: block; }
+
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; }
+.three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+
+@media (max-width: 900px) {
+  .two-col, .three-col { grid-template-columns: 1fr; }
+  .section { padding: 1rem; }
+}
+
+/* ═══════════════════════════════════════════
+   CARDS
+═══════════════════════════════════════════ */
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1.4rem;
+  margin-bottom: 1.2rem;
+  position: relative;
+  overflow: hidden;
+}
+.card::before {
+  content: '';
+  position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+  background: var(--accent);
+  opacity: 0.5;
+}
+.card.warn-card::before { background: var(--warn); }
+.card.ok-card::before { background: var(--ok); }
+.card.purple-card::before { background: var(--purple); }
+
+.card-hdr {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid var(--border);
+}
+.card-hdr h3 {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 600;
+  font-size: 1.05rem;
+  color: var(--bright);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.badge {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  padding: 0.2rem 0.6rem;
+  border-radius: 3px;
+  background: rgba(0,229,255,0.1);
+  border: 1px solid rgba(0,229,255,0.25);
+  color: var(--accent);
+}
+.badge.warn { background: rgba(255,107,53,0.1); border-color: rgba(255,107,53,0.25); color: var(--warn); }
+.badge.ok { background: rgba(57,255,20,0.1); border-color: rgba(57,255,20,0.25); color: var(--ok); }
+.badge.purple { background: rgba(155,127,244,0.1); border-color: rgba(155,127,244,0.25); color: var(--purple); }
+
+/* ═══════════════════════════════════════════
+   FORM ELEMENTS
+═══════════════════════════════════════════ */
+.field-label {
+  display: block;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.62rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin: 0.85rem 0 0.3rem;
+}
+.field-label:first-child { margin-top: 0; }
+
+input, select, textarea {
+  width: 100%;
+  background: #060810;
+  border: 1px solid var(--border2);
+  color: var(--text);
+  padding: 0.5rem 0.7rem;
+  font-family: 'Barlow', sans-serif;
+  font-size: 0.85rem;
+  border-radius: 4px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(0,229,255,0.08);
+}
+textarea { resize: vertical; min-height: 75px; line-height: 1.5; }
+select option { background: var(--panel); }
+
+/* ═══════════════════════════════════════════
+   BUTTONS
+═══════════════════════════════════════════ */
+.btn {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 600;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+.btn:hover { background: var(--accent); color: #080b10; box-shadow: 0 0 14px rgba(0,229,255,0.35); }
+.btn.w { border-color: var(--warn); color: var(--warn); }
+.btn.w:hover { background: var(--warn); color: #fff; box-shadow: 0 0 14px rgba(255,107,53,0.35); }
+.btn.g { border-color: var(--ok); color: var(--ok); }
+.btn.g:hover { background: var(--ok); color: #080b10; box-shadow: 0 0 14px rgba(57,255,20,0.35); }
+.btn.p { border-color: var(--purple); color: var(--purple); }
+.btn.p:hover { background: var(--purple); color: #fff; box-shadow: 0 0 14px rgba(155,127,244,0.35); }
+
+.btn-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1rem; }
+
+/* ═══════════════════════════════════════════
+   OUTPUT / TERMINAL BOXES
+═══════════════════════════════════════════ */
+.terminal {
+  background: #04060a;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.75rem 0.9rem;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.68rem;
+  line-height: 1.75;
+  color: var(--accent);
+  margin-top: 0.8rem;
+  max-height: 180px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.terminal .c-ok   { color: var(--ok); }
+.terminal .c-warn { color: var(--warn); }
+.terminal .c-dim  { color: var(--muted); }
+.terminal .c-pur  { color: var(--purple); }
+
+/* Code blocks */
+.code-block {
+  background: #04060a;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.9rem 1rem;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.67rem;
+  line-height: 1.85;
+  color: #8ab4cc;
+  overflow-x: auto;
+  white-space: pre;
+  margin: 0.6rem 0;
+}
+.code-block .ck  { color: var(--accent); }
+.code-block .cv  { color: var(--ok); }
+.code-block .cm  { color: var(--muted); }
+.code-block .cw  { color: var(--warn); }
+.code-block .cp  { color: var(--purple); }
+
+/* Endpoint badges */
+.endpoint {
+  display: flex; align-items: center; gap: 0.6rem;
+  background: #04060a;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.55rem 0.8rem;
+  margin: 0.5rem 0;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--text);
+}
+.ep-method {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.ep-method.get  { background: rgba(57,255,20,0.15);  color: var(--ok); }
+.ep-method.post { background: rgba(0,229,255,0.15);  color: var(--accent); }
+.ep-method.del  { background: rgba(255,107,53,0.15); color: var(--warn); }
+
+/* ═══════════════════════════════════════════
+   TOGGLES
+═══════════════════════════════════════════ */
+.toggle-row { display: flex; align-items: center; gap: 0.7rem; margin: 0.65rem 0; }
+.tog { position: relative; width: 38px; height: 20px; flex-shrink: 0; }
+.tog input { opacity: 0; width: 0; height: 0; }
+.tog-slider { position: absolute; inset: 0; background: var(--border2); border-radius: 20px; cursor: pointer; transition: background 0.2s; }
+.tog-slider::before { content: ''; position: absolute; left: 2px; top: 2px; width: 16px; height: 16px; background: var(--muted); border-radius: 50%; transition: transform 0.2s, background 0.2s; }
+.tog input:checked + .tog-slider { background: rgba(0,229,255,0.15); border: 1px solid rgba(0,229,255,0.4); }
+.tog input:checked + .tog-slider::before { transform: translateX(18px); background: var(--accent); }
+.tog-label { font-family: 'Share Tech Mono', monospace; font-size: 0.68rem; color: var(--text); }
+
+/* ═══════════════════════════════════════════
+   ANONYMIZER REDACT HIGHLIGHT
+═══════════════════════════════════════════ */
+.redacted { background: var(--warn); color: var(--warn); border-radius: 2px; padding: 0 2px; user-select: none; }
+
+/* ═══════════════════════════════════════════
+   EXPORT GRID
+═══════════════════════════════════════════ */
+.export-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin-top: 0.8rem; }
+.exp-card {
+  background: #04060a; border: 1px solid var(--border); border-radius: 4px;
+  padding: 0.8rem; text-align: center; cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.exp-card:hover { border-color: var(--accent); background: rgba(0,229,255,0.04); }
+.exp-fmt { font-family: 'Barlow Condensed', sans-serif; font-size: 1.1rem; font-weight: 800; color: var(--accent); }
+.exp-desc { font-family: 'Share Tech Mono', monospace; font-size: 0.58rem; color: var(--muted); margin-top: 0.2rem; }
+
+/* ═══════════════════════════════════════════
+   LIVE SCHEMA
+═══════════════════════════════════════════ */
+.schema-box {
+  background: #04060a; border: 1px solid var(--border); border-radius: 4px;
+  padding: 0.8rem 1rem; font-family: 'Share Tech Mono', monospace;
+  font-size: 0.65rem; line-height: 1.9; color: var(--muted);
+  max-height: 400px; overflow-y: auto; margin-top: 0.8rem;
+}
+.schema-box .sk { color: var(--accent); }
+.schema-box .sv { color: var(--ok); }
+.schema-box .sc { color: #1e3040; }
+
+/* ═══════════════════════════════════════════
+   RATE LIMIT TABLE
+═══════════════════════════════════════════ */
+.rate-table { width: 100%; border-collapse: collapse; margin: 0.8rem 0; }
+.rate-table th, .rate-table td {
+  padding: 0.55rem 0.8rem;
+  text-align: left;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.68rem;
+  border-bottom: 1px solid var(--border);
+}
+.rate-table th { color: var(--muted); font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; }
+.rate-table td { color: var(--text); }
+.rate-table tr:last-child td { border-bottom: none; }
+.rate-num { color: var(--accent); font-weight: bold; }
+
+/* ═══════════════════════════════════════════
+   WEBHOOK SECTION
+═══════════════════════════════════════════ */
+.event-chip {
+  display: inline-block;
+  background: rgba(155,127,244,0.1); border: 1px solid rgba(155,127,244,0.25);
+  color: var(--purple); border-radius: 3px;
+  padding: 0.15rem 0.5rem;
+  font-family: 'Share Tech Mono', monospace; font-size: 0.62rem;
+  margin: 0.2rem 0.2rem 0.2rem 0;
+}
+
+/* ═══════════════════════════════════════════
+   FOOTER
+═══════════════════════════════════════════ */
+footer {
+  background: #060810;
+  border-top: 1px solid var(--border);
+  padding: 0.7rem 2rem;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.6rem;
+  color: var(--muted);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+footer a { color: var(--accent); text-decoration: none; }
+
+/* ═══════════════════════════════════════════
+   DIVIDERS / MISC
+═══════════════════════════════════════════ */
+.section-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.62rem;
+  color: var(--muted);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin: 1.2rem 0 0.5rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.info-row {
+  display: flex; gap: 0.5rem; align-items: flex-start;
+  font-size: 0.8rem; color: var(--text); margin: 0.4rem 0;
+}
+.info-row .ik { font-family: 'Share Tech Mono', monospace; font-size: 0.65rem; color: var(--muted); min-width: 110px; }
+</style>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══════════════════════════════════════════ -->
+<header>
+  <div class="logo-block">
+    <h1><span class="logo-skull">🏴‍☠️</span> AI Trouble Shooter</h1>
+    <div class="byline">Pir8 Eye Web Solutions, LLC &nbsp;·&nbsp; API v1.0 &nbsp;·&nbsp; Release 2/19/2026</div>
+  </div>
+  <div class="header-meta">
+    <span class="live-time" id="live-time"></span>
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;justify-content:flex-end;">
+      <span class="pill">HTML · CSS · JS · JSON</span>
+      <span class="pill">EXPORT: PDF · XML · XTML</span>
+    </div>
+  </div>
+</header>
+
+<!-- ═══ STATUS BAR ════════════════════════════════════════ -->
+<div class="status-bar">
+  <div class="si"><div class="dot"></div> AI-ROBOTXT: ACTIVE</div>
+  <div class="si"><div class="dot w"></div> AI-ERRORLOG: LISTENING</div>
+  <div class="si"><div class="dot"></div> AI-REPORTS: READY</div>
+  <div class="si"><div class="dot p"></div> AI-ANONYMIZER: STANDBY</div>
+  <div class="si"><div class="dot"></div> WEBHOOKS: CONFIGURED</div>
+  <div class="sess">SESSION: <span id="sess-id" style="color:var(--accent)"></span></div>
+</div>
+
+<!-- ═══ NAV TABS ══════════════════════════════════════════ -->
+<nav class="nav-wrap">
+  <button class="nav-tab active" data-tab="errorlog">⚠ AI-Errorlog</button>
+  <button class="nav-tab" data-tab="reports">📋 AI-Reports</button>
+  <button class="nav-tab" data-tab="anonymizer">🕵 AI-Anonymizer</button>
+  <button class="nav-tab" data-tab="robotxt">🤖 AI-Robotxt</button>
+  <button class="nav-tab" data-tab="export">↗ Export</button>
+  <button class="nav-tab" data-tab="api-docs">📚 API Docs</button>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════
+     TAB: AI-ERRORLOG
+════════════════════════════════════════════════════════ -->
+<div class="section active" id="tab-errorlog">
+  <div class="two-col">
+
+    <div>
+      <div class="card warn-card">
+        <div class="card-hdr">
+          <h3>⚠ Log an AI Error</h3>
+          <span class="badge warn">ai-errorlog</span>
+        </div>
+
+        <label class="field-label">AI System / Model</label>
+        <input type="text" id="el-model" placeholder="e.g. GPT-4o, Claude Sonnet, Gemini Pro…" />
+
+        <label class="field-label">Error Type</label>
+        <select id="el-type">
+          <option value="">— Select error type —</option>
+          <option>Hallucination / False Information</option>
+          <option>Context Loss / Memory Failure</option>
+          <option>Instruction Ignored</option>
+          <option>Infinite Loop / Repeat</option>
+          <option>Refusal (Incorrect)</option>
+          <option>Formatting Failure</option>
+          <option>Code Error / Bug Introduced</option>
+          <option>Tool / Plugin Failure</option>
+          <option>Timeout / No Response</option>
+          <option>Data Corruption</option>
+          <option>Other</option>
+        </select>
+
+        <label class="field-label">Expected behavior</label>
+        <input type="text" id="el-expected" placeholder="What should the AI have done?" />
+
+        <label class="field-label">Actual behavior (as you experienced it)</label>
+        <textarea id="el-desc" placeholder="Describe exactly what went wrong — include your prompt, what the AI did, how it differed from expectations…"></textarea>
+
+        <label class="field-label">Severity</label>
+        <select id="el-severity">
+          <option value="low">Low — Minor inconvenience</option>
+          <option value="medium" selected>Medium — Workflow disrupted</option>
+          <option value="high">High — Significant work lost</option>
+          <option value="critical">Critical — Data / system impact</option>
+        </select>
+
+        <div class="btn-row">
+          <button class="btn w" onclick="logError()">⚡ Log Error</button>
+          <button class="btn" onclick="clearError()">✕ Clear</button>
+        </div>
+      </div>
+
+      <!-- API reference inline -->
+      <div class="card">
+        <div class="card-hdr"><h3>API Endpoint</h3><span class="badge">Reference</span></div>
+        <div class="endpoint"><span class="ep-method post">POST</span>/api/v1/ai-errorlog/create</div>
+        <div class="endpoint"><span class="ep-method get">GET</span>/api/v1/ai-errorlog/{log_id}</div>
+        <div class="code-block"><span class="cm">// Request body</span>
+{
+  <span class="ck">"error_type"</span>:         <span class="cv">"string"</span>,
+  <span class="ck">"severity"</span>:           <span class="cv">"low|medium|high|critical"</span>,
+  <span class="ck">"expected_behavior"</span>:  <span class="cv">"string"</span>,
+  <span class="ck">"actual_behavior"</span>:    <span class="cv">"string"</span>,
+  <span class="ck">"conversation_id"</span>:   <span class="cv">"uuid"</span>,
+  <span class="ck">"ai_context"</span>: {
+    <span class="ck">"model"</span>:    <span class="cv">"string"</span>,
+    <span class="ck">"version"</span>: <span class="cv">"string"</span>
+  }
+}</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="card-hdr"><h3>Error Log Output</h3><span class="badge warn">Timestamped</span></div>
+        <div class="terminal" id="el-output">// AI Error Log ready. No errors logged yet.
+// Fill in the form and click "Log Error" to begin.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-hdr"><h3>API Response Schema</h3><span class="badge">GET /ai-errorlog/{id}</span></div>
+        <div class="code-block"><span class="cm">// Response</span>
+{
+  <span class="ck">"log_id"</span>:              <span class="cv">"uuid"</span>,
+  <span class="ck">"timestamp"</span>:           <span class="cv">"ISO 8601"</span>,
+  <span class="ck">"error_hash"</span>:          <span class="cv">"0x..."</span>,
+  <span class="ck">"verification_status"</span>: <span class="cv">"confirmed"</span>,
+  <span class="ck">"ai_context"</span>: {
+    <span class="ck">"model"</span>:            <span class="cv">"string"</span>,
+    <span class="ck">"confidence_score"</span>: <span class="cv">"float"</span>
+  },
+  <span class="ck">"error_analysis"</span>: {
+    <span class="ck">"category"</span>:         <span class="cv">"string"</span>,
+    <span class="ck">"similar_errors"</span>:   <span class="cv">["uuid", "..."]</span>,
+    <span class="ck">"suggested_fixes"</span>:  <span class="cv">["string"]</span>
+  },
+  <span class="ck">"log_uri"</span>:             <span class="cv">"/logs/{log_id}"</span>
+}</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     TAB: AI-REPORTS
+════════════════════════════════════════════════════════ -->
+<div class="section" id="tab-reports">
+  <div class="two-col">
+
+    <div>
+      <div class="card">
+        <div class="card-hdr">
+          <h3>📋 Generate Error Report</h3>
+          <span class="badge">ai-reports</span>
+        </div>
+
+        <label class="field-label">Linked Error Log ID</label>
+        <input type="text" id="rpt-logid" placeholder="Auto-filled from Error Log, or enter manually" />
+
+        <label class="field-label">Report Type</label>
+        <select id="rpt-type">
+          <option value="brief">Brief — Executive summary only</option>
+          <option value="standard" selected>Standard — Full impact analysis</option>
+          <option value="detailed">Detailed — Technical deep-dive</option>
+        </select>
+
+        <label class="field-label">Time Lost (minutes)</label>
+        <input type="number" id="rpt-time" placeholder="e.g. 45" min="0" />
+
+        <label class="field-label">Estimated Work / Value Impact</label>
+        <input type="text" id="rpt-value" placeholder="e.g. $150 billable work, 2hr project delay" />
+
+        <label class="field-label">Lost Workflow Description</label>
+        <textarea id="rpt-workflow" placeholder="What tasks were interrupted or had to be redone?" style="min-height:60px"></textarea>
+
+        <label class="field-label">Resolution Attempted</label>
+        <input type="text" id="rpt-resolution" placeholder="e.g. Restarted session, rephrased prompt, switched model" />
+
+        <div class="btn-row">
+          <button class="btn" onclick="generateReport()">📄 Generate Report</button>
+          <button class="btn g" onclick="confirmReport()">✔ Confirm Report</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hdr"><h3>API Endpoint</h3><span class="badge">Reference</span></div>
+        <div class="endpoint"><span class="ep-method post">POST</span>/api/v1/ai-reports/generate</div>
+        <div class="code-block"><span class="cm">// Request body</span>
+{
+  <span class="ck">"error_log_id"</span>:    <span class="cv">"uuid"</span>,
+  <span class="ck">"report_type"</span>:    <span class="cv">"brief|standard|detailed"</span>,
+  <span class="ck">"include_metrics"</span>: <span class="cv">true</span>,
+  <span class="ck">"user_feedback"</span>: {
+    <span class="ck">"time_lost_min"</span>:      <span class="cv">45</span>,
+    <span class="ck">"value_impact"</span>:       <span class="cv">"string"</span>,
+    <span class="ck">"workflow_lost"</span>:      <span class="cv">"string"</span>,
+    <span class="ck">"resolution_tried"</span>:   <span class="cv">"string"</span>
+  }
+}</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="card-hdr"><h3>Report Output</h3><span class="badge">Live Preview</span></div>
+        <div class="terminal" id="rpt-output">// Waiting for Error Log entry.
+// Log an error first, then generate report here.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-hdr"><h3>API Response Schema</h3><span class="badge">POST /ai-reports/generate</span></div>
+        <div class="code-block"><span class="cm">// Response</span>
+{
+  <span class="ck">"report_id"</span>:          <span class="cv">"uuid"</span>,
+  <span class="ck">"generated_at"</span>:       <span class="cv">"ISO 8601"</span>,
+  <span class="ck">"executive_summary"</span>: <span class="cv">"string"</span>,
+  <span class="ck">"time_impact"</span>: {
+    <span class="ck">"downtime_minutes"</span>:    <span class="cv">45</span>,
+    <span class="ck">"productivity_loss"</span>:   <span class="cv">"string"</span>
+  },
+  <span class="ck">"value_impact"</span>: {
+    <span class="ck">"estimated_cost"</span>:      <span class="cv">"string"</span>,
+    <span class="ck">"workflow_disruption"</span>: <span class="cv">"string"</span>
+  },
+  <span class="ck">"recommendations"</span>:    <span class="cv">["string"]</span>,
+  <span class="ck">"confirmed_by_user"</span>:  <span class="cv">false</span>
+}</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     TAB: AI-ANONYMIZER
+════════════════════════════════════════════════════════ -->
+<div class="section" id="tab-anonymizer">
+  <div class="two-col">
+
+    <div>
+      <div class="card purple-card">
+        <div class="card-hdr">
+          <h3>🕵 Anonymize Report</h3>
+          <span class="badge purple">ai-anonymizer</span>
+        </div>
+
+        <div class="section-label">PII Redaction Rules</div>
+        <div class="toggle-row">
+          <label class="tog"><input type="checkbox" id="anon-names" checked><span class="tog-slider"></span></label>
+          <span class="tog-label">Personal names</span>
+        </div>
+        <div class="toggle-row">
+          <label class="tog"><input type="checkbox" id="anon-email" checked><span class="tog-slider"></span></label>
+          <span class="tog-label">Email addresses</span>
+        </div>
+        <div class="toggle-row">
+          <label class="tog"><input type="checkbox" id="anon-ip" checked><span class="tog-slider"></span></label>
+          <span class="tog-label">IP addresses / device IDs</span>
+        </div>
+        <div class="toggle-row">
+          <label class="tog"><input type="checkbox" id="anon-company"><span class="tog-slider"></span></label>
+          <span class="tog-label">Company / org names</span>
+        </div>
+        <div class="toggle-row">
+          <label class="tog"><input type="checkbox" id="anon-url"><span class="tog-slider"></span></label>
+          <span class="tog-label">URLs / file paths</span>
+        </div>
+
+        <label class="field-label">Anonymization Level</label>
+        <select id="anon-level">
+          <option value="basic">Basic — Essential PII only</option>
+          <option value="standard" selected>Standard — Recommended for GitHub</option>
+          <option value="maximum">Maximum — All identifiable data</option>
+        </select>
+
+        <label class="field-label">Destination</label>
+        <select id="anon-dest">
+          <option value="github">GitHub (public repo)</option>
+          <option value="internal">Internal only</option>
+          <option value="none">No upload</option>
+        </select>
+
+        <label class="field-label">Paste text to anonymize</label>
+        <textarea id="anon-input" placeholder="Paste report text, chat log, conversation history, or any content to clean before sharing…"></textarea>
+
+        <div class="btn-row">
+          <button class="btn p" onclick="runAnonymizer()">🕵 Anonymize</button>
+          <button class="btn g" onclick="approveGithub()">↑ Approve &amp; Upload to GitHub</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hdr"><h3>API Endpoints</h3><span class="badge">Reference</span></div>
+        <div class="endpoint"><span class="ep-method post">POST</span>/api/v1/ai-anonymizer/process</div>
+        <div class="endpoint"><span class="ep-method post">POST</span>/api/v1/ai-anonymizer/upload-to-github</div>
+        <div class="code-block"><span class="cm">// Process request</span>
+{
+  <span class="ck">"report_id"</span>:            <span class="cv">"uuid"</span>,
+  <span class="ck">"anonymization_level"</span>: <span class="cv">"basic|standard|maximum"</span>,
+  <span class="ck">"pii_fields"</span>:           <span class="cv">["names","email","ip"]</span>,
+  <span class="ck">"destination"</span>:          <span class="cv">"github|internal|none"</span>
+}</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="card-hdr"><h3>Anonymized Output</h3><span class="badge purple">PII Scrubbed</span></div>
+        <div class="terminal" id="anon-output" style="max-height:220px">// Anonymized output will appear here.
+// PII will be <span class="c-warn">REDACTED</span> automatically.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-hdr"><h3>API Response Schema</h3><span class="badge purple">Anonymizer</span></div>
+        <div class="code-block"><span class="cm">// Process response</span>
+{
+  <span class="ck">"anonymized_id"</span>:   <span class="cv">"uuid"</span>,
+  <span class="ck">"processed_at"</span>:   <span class="cv">"ISO 8601"</span>,
+  <span class="ck">"stats"</span>: {
+    <span class="ck">"fields_anonymized"</span>: <span class="cv">12</span>,
+    <span class="ck">"patterns_masked"</span>:   <span class="cv">7</span>,
+    <span class="ck">"original_hash"</span>:    <span class="cv">"0x..."</span>,
+    <span class="ck">"anonymized_hash"</span>:  <span class="cv">"0x..."</span>
+  },
+  <span class="ck">"github_ready"</span>:    <span class="cv">true</span>,
+
+}
+<span class="cm">// GitHub upload response</span>
+{
+  <span class="ck">"upload_id"</span>:        <span class="cv">"uuid"</span>,
+  <span class="ck">"github_url"</span>:       <span class="cv">"string"</span>,
+  <span class="ck">"commit_hash"</span>:      <span class="cv">"string"</span>,
+  <span class="ck">"privacy_verified"</span>: <span class="cv">true</span>
+}</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     TAB: AI-ROBOTXT
+════════════════════════════════════════════════════════ -->
+<div class="section" id="tab-robotxt">
+  <div class="two-col">
+
+    <div>
+      <div class="card ok-card">
+        <div class="card-hdr">
+          <h3>🤖 AI-Robotxt Generator</h3>
+          <span class="badge ok">ai-robotxt</span>
+        </div>
+        <div class="code-block" style="margin-bottom:1rem"><span class="cm">// Post-AI expansion of robots.txt
+// Pre-AI: robots.txt (automation control)
+// Post-AI: ai-robotxt (AI scraper control)</span>
+&lt;<span class="ck">ai-robotxt</span>&gt;
+  [if ai, then scrape approved ai-accessible data]
+  [else declare robot.txt ToS eligible data]
+&lt;/<span class="ck">ai-robotxt</span>&gt;</div>
+
+        <label class="field-label">AI Accessible Data — allow scrape</label>
+        <textarea id="rt-allow" placeholder="e.g. error type enums, public report metadata, API schema definitions, anonymized logs…" style="min-height:60px"></textarea>
+
+        <label class="field-label">ToS-Protected Data — deny / robot.txt eligible</label>
+        <textarea id="rt-deny" placeholder="e.g. user PII, session tokens, proprietary prompts, internal error descriptions…" style="min-height:60px"></textarea>
+
+        <label class="field-label">Directive</label>
+        <select id="rt-directive">
+          <option value="selective">Selective — Allow approved, block ToS data</option>
+          <option value="open">Open — Allow all AI scrapers</option>
+          <option value="closed">Closed — Block all AI scrapers</option>
+          <option value="custom">Custom (advanced)</option>
+        </select>
+
+        <label class="field-label">AI Scraper Compliance Level</label>
+        <select id="rt-compliance">
+          <option value="strict">Strict</option>
+          <option value="moderate" selected>Moderate</option>
+          <option value="permissive">Permissive</option>
+        </select>
+
+        <div class="btn-row">
+          <button class="btn g" onclick="generateRobotxt()">⚙ Generate ai-robotxt</button>
+          <button class="btn" onclick="testRobotxtAccess()">▶ Test Access Check</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hdr"><h3>API Endpoints</h3><span class="badge">Reference</span></div>
+        <div class="endpoint"><span class="ep-method get">GET</span>/api/v1/ai-robotxt/check-access</div>
+        <div class="endpoint"><span class="ep-method post">POST</span>/api/v1/ai-robotxt/register-scraper</div>
+        <div class="code-block"><span class="cm">// check-access params</span>
+{
+  <span class="ck">"user_agent"</span>: <span class="cv">"GPT-4"</span>,
+  <span class="ck">"path"</span>:       <span class="cv">"/api/v1/reports"</span>
+}
+<span class="cm">// register-scraper body</span>
+{
+  <span class="ck">"scraper_name"</span>:      <span class="cv">"string"</span>,
+  <span class="ck">"ai_type"</span>:           <span class="cv">"GPT|Claude|Gemini"</span>,
+  <span class="ck">"purpose"</span>:           <span class="cv">"string"</span>,
+  <span class="ck">"compliance_level"</span>:  <span class="cv">"strict|moderate"</span>
+}</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="card-hdr"><h3>Generated ai-robotxt</h3><span class="badge ok">Output</span></div>
+        <div class="terminal" id="rt-output">// ai-robotxt directive will be generated here.
+// Fill in allowed/denied data and click Generate.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-hdr"><h3>Access Check Response</h3><span class="badge">Live Test</span></div>
+        <div class="terminal" id="rt-access-output">// Click "Test Access Check" to simulate a scraper request.</div>
+        <div class="code-block" style="margin-top:0.8rem"><span class="cm">// check-access response</span>
+{
+  <span class="ck">"access_granted"</span>:     <span class="cv">true</span>,
+  <span class="ck">"allowed_paths"</span>:      <span class="cv">["/api/v1/*"]</span>,
+  <span class="ck">"rate_limit"</span>:         <span class="cv">1000</span>,
+  <span class="ck">"ai_robots_version"</span>: <span class="cv">"2.0"</span>,
+  <span class="ck">"registration_id"</span>:   <span class="cv">"uuid"</span>,
+  <span class="ck">"expires_at"</span>:         <span class="cv">"ISO 8601"</span>
+}</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     TAB: EXPORT
+════════════════════════════════════════════════════════ -->
+<div class="section" id="tab-export">
+  <div class="two-col">
+
+    <div>
+      <div class="card">
+        <div class="card-hdr"><h3>↗ Export Report</h3><span class="badge">All Formats</span></div>
+        <div class="section-label">Select Format</div>
+        <div class="export-grid">
+          <div class="exp-card" onclick="exportAs('PDF')"><div class="exp-fmt">PDF</div><div class="exp-desc">Human report</div></div>
+          <div class="exp-card" onclick="exportAs('XML')"><div class="exp-fmt">XML</div><div class="exp-desc">Structured data</div></div>
+          <div class="exp-card" onclick="exportAs('XTML')"><div class="exp-fmt">XTML</div><div class="exp-desc">AI-tagged markup</div></div>
+          <div class="exp-card" onclick="exportAs('JSON')"><div class="exp-fmt">JSON</div><div class="exp-desc">API payload</div></div>
+          <div class="exp-card" onclick="exportAs('CSV')"><div class="exp-fmt">CSV</div><div class="exp-desc">Tabular log</div></div>
+          <div class="exp-card" onclick="copyPayload()"><div class="exp-fmt">COPY</div><div class="exp-desc">Clipboard</div></div>
+        </div>
+        <div class="terminal" id="export-out" style="margin-top:1rem">// Select a format above to export the current session report.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-hdr"><h3>Webhook Config</h3><span class="badge purple">Real-Time</span></div>
+        <p style="font-size:0.8rem;color:var(--text);margin-bottom:0.8rem">Register a webhook to receive real-time notifications when errors are logged, reports generated, or anonymization completes.</p>
+
+        <label class="field-label">Webhook URL</label>
+        <input type="text" id="wh-url" placeholder="https://your-server.com/webhook" />
+
+        <label class="field-label">Events</label>
+        <div style="margin:0.4rem 0">
+          <span class="event-chip">error.created</span>
+          <span class="event-chip">report.generated</span>
+          <span class="event-chip">anonymizer.completed</span>
+          <span class="event-chip">github.uploaded</span>
+          <span class="event-chip">robotxt.accessed</span>
+        </div>
+
+        <label class="field-label">Webhook Secret</label>
+        <input type="text" id="wh-secret" placeholder="your_webhook_secret" />
+
+        <div class="btn-row">
+          <button class="btn p" onclick="registerWebhook()">↗ Register Webhook</button>
+        </div>
+        <div class="terminal" id="wh-out" style="margin-top:0.8rem">// Webhook output will appear here.</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="card-hdr"><h3>Live API Payload</h3><span class="badge">Updates as you type</span></div>
+        <p style="font-size:0.75rem;color:var(--muted);margin-bottom:0.3rem">Full JSON payload — mirrors what would be sent to <code style="color:var(--accent);font-size:0.65rem">POST /api/v1/report</code></p>
+        <div class="schema-box" id="live-schema"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     TAB: API DOCS — FULL XTML SPEC + REFERENCE
+════════════════════════════════════════════════════════ -->
+<div class="section" id="tab-api-docs">
+
+  <!-- XTML SPEC HEADER -->
+  <div class="card" style="border-color:var(--accent);margin-bottom:1.4rem">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem">
+      <div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:1.6rem;color:var(--accent);letter-spacing:0.06em;text-transform:uppercase">XTML Specification</div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:0.65rem;color:var(--muted);margin-top:0.3rem;letter-spacing:0.1em">eXtensible Troubleshooting Markup Language &nbsp;·&nbsp; v2.0 DRAFT &nbsp;·&nbsp; Pir8 Eye Web Solutions, LLC &nbsp;·&nbsp; 2026</div>
+        <div style="font-size:0.82rem;color:var(--text);margin-top:0.7rem;max-width:700px;line-height:1.6">XTML is a post-AI expansion tag standard for capturing, classifying, governing, and transmitting AI behavioral data. It extends pre-AI automation protocols (robots.txt, XML error logs) into a structured lifecycle standard covering access control, error capture, context, hallucination taxonomy, remediation, governance, safety, and agent tracing.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:0.4rem;align-items:flex-end">
+        <span class="pill">XTML/2.0</span>
+        <span class="pill">11 TAG TYPES</span>
+        <span class="pill">3 LIFECYCLE LAYERS</span>
+        <button class="btn" onclick="downloadXTMLSpec()" style="margin-top:0.3rem">↓ Download Full Spec</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LAYER OVERVIEW -->
+  <div class="three-col" style="margin-bottom:1.2rem">
+    <div class="card ok-card">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:0.75rem;color:var(--ok);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:0.5rem">Layer 0 — Access Control</div>
+      <div style="font-size:0.78rem;color:var(--text);line-height:1.6;margin-bottom:0.7rem">Governs what AI scrapers and agents can see before any interaction occurs. The gateway layer.</div>
+      <span class="badge ok">ai-robotxt</span>
+    </div>
+    <div class="card warn-card">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:0.75rem;color:var(--warn);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:0.5rem">Layer 1 — Error Capture</div>
+      <div style="font-size:0.78rem;color:var(--text);line-height:1.6;margin-bottom:0.7rem">Records what went wrong, when, in what context, and what the user experienced. The evidence layer.</div>
+      <span class="badge warn" style="margin-right:0.3rem">ai-errorlog</span>
+      <span class="badge warn" style="margin-right:0.3rem">ai-reports</span>
+      <span class="badge warn">ai-anonymizer</span>
+    </div>
+    <div class="card purple-card">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:0.75rem;color:var(--purple);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:0.5rem">Layer 2 — Context & Cause</div>
+      <div style="font-size:0.78rem;color:var(--text);line-height:1.6;margin-bottom:0.7rem">Captures model state, conversation history, hallucination type, and the full agent tool chain.</div>
+      <span class="badge purple" style="margin-right:0.3rem">ai-context</span>
+      <span class="badge purple" style="margin-right:0.3rem">ai-provenance</span>
+      <span class="badge purple">ai-hallucination</span>
+      <span class="badge purple" style="margin-top:0.3rem;display:inline-block">ai-agent-trace</span>
+    </div>
+  </div>
+
+  <div class="two-col" style="margin-bottom:1.2rem">
+    <div class="card" style="border-left-color:var(--accent)">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:0.75rem;color:var(--accent);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:0.5rem">Layer 3 — Governance & Fix</div>
+      <div style="font-size:0.78rem;color:var(--text);line-height:1.6;margin-bottom:0.7rem">Closes the loop — consent, bias flagging, remediation trail, and verified resolution. The accountability layer.</div>
+      <span class="badge" style="margin-right:0.3rem">ai-consent</span>
+      <span class="badge" style="margin-right:0.3rem">ai-safety-flag</span>
+      <span class="badge">ai-remediation</span>
+    </div>
+    <div class="card">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:0.75rem;color:var(--muted);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:0.5rem">Full Lifecycle Flow</div>
+      <div class="code-block" style="font-size:0.63rem;line-height:2">
+<span class="cm">// XTML tag execution order</span>
+[L0] <span class="ck">ai-robotxt</span>      → Who can access what
+[L1] <span class="ck">ai-errorlog</span>     → What broke, timestamped
+[L1] <span class="ck">ai-reports</span>      → Impact on time + value
+[L1] <span class="ck">ai-anonymizer</span>   → Scrub PII before sharing
+[L2] <span class="ck">ai-context</span>      → Model state at failure
+[L2] <span class="ck">ai-provenance</span>   → Conversation chain
+[L2] <span class="ck">ai-hallucination</span> → False output taxonomy
+[L2] <span class="ck">ai-agent-trace</span>  → Tool/agent call chain
+[L3] <span class="ck">ai-consent</span>      → Data governance/GDPR
+[L3] <span class="ck">ai-safety-flag</span>  → Bias + safety markers
+[L3] <span class="ck">ai-remediation</span>  → Fix attempts + resolution</div>
+    </div>
+  </div>
+
+  <!-- ── LAYER 0 ── -->
+  <div class="section-label" style="font-size:0.7rem;color:var(--ok);margin-top:0">▸ LAYER 0 — ACCESS CONTROL</div>
+  <div class="two-col">
+    <div class="card ok-card">
+      <div class="card-hdr"><h3>ai-robotxt</h3><span class="badge ok">Layer 0</span></div>
+      <div style="font-size:0.78rem;color:var(--text);margin-bottom:0.8rem;line-height:1.6">Post-AI expansion of <code style="color:var(--accent);font-size:0.7rem">robots.txt</code>. Defines what AI scrapers, agents, and LLM pipelines may access. Separates publicly scrapeable AI data from ToS-protected content. Supports per-agent compliance tiers and rate control.</div>
+      <div class="code-block"><span class="cm">// XTML tag — full form</span>
+&lt;<span class="ck">ai-robotxt</span> version=<span class="cv">"2.0"</span> directive=<span class="cv">"selective"</span>&gt;
+  &lt;<span class="ck">allow</span> agent=<span class="cv">"*"</span>&gt;
+    &lt;path&gt;/api/v1/reports/public&lt;/path&gt;
+    &lt;path&gt;/schema/*&lt;/path&gt;
+  &lt;/<span class="ck">allow</span>&gt;
+  &lt;<span class="ck">deny</span> agent=<span class="cv">"*"</span>&gt;
+    &lt;path&gt;/api/v1/users/*&lt;/path&gt;
+    &lt;path&gt;/internal/*&lt;/path&gt;
+  &lt;/<span class="ck">deny</span>&gt;
+  &lt;<span class="ck">compliance</span> level=<span class="cv">"strict"</span> /&gt;
+  &lt;<span class="ck">rate-limit</span> requests=<span class="cv">"1000"</span> per=<span class="cv">"minute"</span> /&gt;
+&lt;/<span class="ck">ai-robotxt</span>&gt;</div>
+      <div class="endpoint"><span class="ep-method get">GET</span>/api/v1/ai-robotxt/check-access</div>
+      <div class="endpoint"><span class="ep-method post">POST</span>/api/v1/ai-robotxt/register-scraper</div>
+    </div>
+    <div class="card ok-card">
+      <div class="card-hdr"><h3>ai-robotxt v2 Expansion</h3><span class="badge ok">New in v2</span></div>
+      <div style="font-size:0.78rem;color:var(--text);margin-bottom:0.8rem;line-height:1.6">v2 adds per-agent identity blocks, expiry timestamps, purpose declarations, and cross-origin AI pipeline permissions — enabling fine-grained multi-model access control.</div>
+      <div class="code-block"><span class="cm">// v2 per-agent identity block</span>
+&lt;<span class="ck">ai-robotxt</span> version=<span class="cv">"2.0"</span>&gt;
+  &lt;<span class="ck">agent</span>
+    name=<span class="cv">"claude-sonnet"</span>
+    purpose=<span class="cv">"error-analysis"</span>
+    compliance=<span class="cv">"strict"</span>
+    expires=<span class="cv">"2026-12-31"</span>
+  &gt;
+    &lt;allow&gt;&lt;path&gt;/reports/anonymized/*&lt;/path&gt;&lt;/allow&gt;
+    &lt;deny&gt;&lt;path&gt;/reports/raw/*&lt;/path&gt;&lt;/deny&gt;
+  &lt;/<span class="ck">agent</span>&gt;
+  &lt;<span class="ck">agent</span>
+    name=<span class="cv">"gpt-4o"</span>
+    purpose=<span class="cv">"code-review"</span>
+    compliance=<span class="cv">"moderate"</span>
+  &gt;
+    &lt;allow&gt;&lt;path&gt;/schema/*&lt;/path&gt;&lt;/allow&gt;
+  &lt;/<span class="ck">agent</span>&gt;
+&lt;/<span class="ck">ai-robotxt</span>&gt;</div>
+    </div>
+  </div>
+
+  <!-- ── LAYER 1 ── -->
+  <div class="section-label" style="color:var(--warn)">▸ LAYER 1 — ERROR CAPTURE</div>
+  <div class="two-col">
+    <div class="card warn-card">
+      <div class="card-hdr"><h3>ai-errorlog</h3><span class="badge warn">Layer 1</span></div>
+      <div style="font-size:0.78rem;color:var(--text);margin-bottom:0.8rem;line-height:1.6">Timestamped, hash-verified capture of AI failures as the user experienced them. The root record that all other XTML tags link back to via <code style="color:var(--accent);font-size:0.7rem">ref</code> attribute.</div>
+      <div class="code-block">&lt;<span class="ck">ai-errorlog</span>
+  id=<span class="cv">"ERR-X7K2-4F9A"</span>
+  timestamp=<span class="cv">"2026-02-20 14:32:11 UTC"</span>
+  severity=<span class="cv">"high"</span>
+  verified=<span class="cv">"true"</span>
+&gt;
+  &lt;<span class="ck">model</span>&gt;claude-sonnet-4-6&lt;/<span class="ck">model</span>&gt;
+  &lt;<span class="ck">error-type</span>&gt;Hallucination / False Information&lt;/<span class="ck">error-type</span>&gt;
+  &lt;<span class="ck">expected-behavior</span>&gt;Correct Python 3.13 syntax&lt;/<span class="ck">expected-behavior</span>&gt;
+  &lt;<span class="ck">actual-behavior</span>&gt;Generated deprecated 3.9 syntax&lt;/<span class="ck">actual-behavior</span>&gt;
+  &lt;<span class="ck">verification-hash</span>&gt;0x4f2a9c1e...&lt;/<span class="ck">verification-hash</span>&gt;
+  &lt;<span class="ck">confirmed-by-user</span>&gt;true&lt;/<span class="ck">confirmed-by-user</span>&gt;
+&lt;/<span class="ck">ai-errorlog</span>&gt;</div>
+    </div>
+    <div class="card warn-card">
+      <div class="card-hdr"><h3>ai-reports &amp; ai-anonymizer</h3><span class="badge warn">Layer 1</span></div>
+      <div style="font-size:0.78rem;color:var(--text);margin-bottom:0.8rem;line-height:1.6">Reports quantify real-world impact. Anonymizer scrubs PII before any external sharing, maintaining a cryptographic hash chain from original to cleaned data.</div>
+      <div class="code-block"><span class="cm">// ai-reports links to errorlog</span>
+&lt;<span class="ck">ai-reports</span> linked=<span class="cv">"ERR-X7K2-4F9A"</span> id=<span class="cv">"RPT-J3M1"</span>&gt;
+  &lt;<span class="ck">time-lost</span> unit=<span class="cv">"minutes"</span>&gt;45&lt;/<span class="ck">time-lost</span>&gt;
+  &lt;<span class="ck">value-impact</span>&gt;$150 billable work&lt;/<span class="ck">value-impact</span>&gt;
+  &lt;<span class="ck">workflow-lost</span>&gt;Code review blocked&lt;/<span class="ck">workflow-lost</span>&gt;
+  &lt;<span class="ck">confirmed</span>&gt;true&lt;/<span class="ck">confirmed</span>&gt;
+&lt;/<span class="ck">ai-reports</span>&gt;
+
+<span class="cm">// ai-anonymizer wraps any tag</span>
+&lt;<span class="ck">ai-anonymizer</span>
+  ref=<span class="cv">"RPT-J3M1"</span>
+  level=<span class="cv">"standard"</span>
+  applied=<span class="cv">"true"</span>
+  original-hash=<span class="cv">"0xAB12..."</span>
+  clean-hash=<span class="cv">"0xCD34..."</span>
+  github-ready=<span class="cv">"true"</span>
+/&gt;</div>
+    </div>
+  </div>
+
+  <!-- ── LAYER 2 ── -->
+  <div class="section-label" style="color:var(--purple)">▸ LAYER 2 — CONTEXT & CAUSE</div>
+  <div class="two-col">
+    <div>
+      <div class="card purple-card">
+        <div class="card-hdr"><h3>ai-context</h3><span class="badge purple">Layer 2</span></div>
+        <div style="font-size:0.78rem;color:var(--text);margin-bottom:0.8rem;line-height:1.6">Captures the exact model state at the moment of failure — temperature, token usage, context window fill, system prompt fingerprint. Critical for reproducibility.</div>
+        <div class="code-block">&lt;<span class="ck">ai-context</span>
+  ref=<span class="cv">"ERR-X7K2-4F9A"</span>
+  model=<span class="cv">"claude-sonnet-4-6"</span>
+  temperature=<span class="cv">"0.7"</span>
+  top-p=<span class="cv">"0.9"</span>
+&gt;
+  &lt;<span class="ck">token-count</span>
+    input=<span class="cv">"2400"</span>
+    output=<span class="cv">"812"</span>
+    max=<span class="cv">"8192"</span>
+    context-fill-pct=<span class="cv">"48"</span>
+  /&gt;
+  &lt;<span class="ck">system-prompt-hash</span>&gt;0x9f3b...&lt;/<span class="ck">system-prompt-hash</span>&gt;
+  &lt;<span class="ck">api-version</span>&gt;2026-02-01&lt;/<span class="ck">api-version</span>&gt;
+  &lt;<span class="ck">tools-enabled</span>&gt;web-search,code-exec&lt;/<span class="ck">tools-enabled</span>&gt;
+&lt;/<span class="ck">ai-context</span>&gt;</div>
+        <div class="endpoint"><span class="ep-method post">POST</span>/api/v1/ai-context/capture</div>
+        <div class="endpoint"><span class="ep-method get">GET</span>/api/v1/ai-context/{ref_id}</div>
+      </div>
+
+      <div class="card purple-card">
+        <div class="card-hdr"><h3>ai-provenance</h3><span class="badge purple">Layer 2</span></div>
+        <div style="font-size:0.78rem;color:var(--text);margin-bottom:0.8rem;line-height:1.6">The conversation chain that led to the error. Tracks turn sequence, token counts per turn, context drift detection, and flags the exact turn where behavior diverged.</div>
+        <div class="code-block">&lt;<span class="ck">ai-provenance</span> ref=<span class="cv">"ERR-X7K2-4F9A"</span>&gt;
+  &lt;<span class="ck">turn</span> seq=<span class="cv">"1"</span>  role=<span class="cv">"user"</span>      tokens=<span class="cv">"42"</span> /&gt;
+  &lt;<span class="ck">turn</span> seq=<span class="cv">"2"</span>  role=<span class="cv">"assistant"</span> tokens=<span class="cv">"310"</span> /&gt;
+  &lt;<span class="ck">turn</span> seq=<span class="cv">"9"</span>  role=<span class="cv">"assistant"</span>
+    context-drift=<span class="cv">"detected"</span>
+    drift-type=<span class="cv">"topic-shift"</span>
+  /&gt;
+  &lt;<span class="ck">turn</span> seq=<span class="cv">"13"</span> role=<span class="cv">"assistant"</span>
+    flagged=<span class="cv">"true"</span>
+    error-ref=<span class="cv">"ERR-X7K2-4F9A"</span>
+  /&gt;
+  &lt;<span class="ck">total-turns</span>&gt;13&lt;/<span class="ck">total-turns</span>&gt;
+  &lt;<span class="ck">drift-first-detected-at-turn</span>&gt;9&lt;/<span class="ck">drift-first-detected-at-turn</span>&gt;
+&lt;/<span class="ck">ai-provenance</span>&gt;</div>
+        <div class="endpoint"><span class="ep-method post">POST</span>/api/v1/ai-provenance/log</div>
+        <div class="endpoint"><span class="ep-method get">GET</span>/api/v1/ai-provenance/{ref_id}</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card purple-card">
+        <div class="card-hdr"><h3>ai-hallucination</h3><span class="badge purple">Layer 2</span></div>
+        <div style="font-size:0.78rem;color:var(--text);margin-bottom:0.8rem;line-height:1.6">Formal taxonomy for classifying false AI outputs. Goes beyond "it was wrong" — distinguishes invention, confabulation, citation fabrication, and statistical drift. Feeds directly into model training feedback pipelines.</div>
+        <div class="code-block">&lt;<span class="ck">ai-hallucination</span>
+  ref=<span class="cv">"ERR-X7K2-4F9A"</span>
+  type=<span class="cv">"factual-invention"</span>
+  confidence=<span class="cv">"0.92"</span>
+  auto-detected=<span class="cv">"false"</span>
+&gt;
+  &lt;<span class="ck">claimed</span>&gt;
+    GIL removed in Python 3.10
+  &lt;/<span class="ck">claimed</span>&gt;
+  &lt;<span class="ck">verified-fact</span>&gt;
+    GIL removed in Python 3.13 (PEP 703)
+  &lt;/<span class="ck">verified-fact</span>&gt;
+  &lt;<span class="ck">source-check</span>
+    status=<span class="cv">"failed"</span>
+    citations-provided=<span class="cv">"0"</span>
+  /&gt;
+  &lt;<span class="ck">training-feedback-eligible</span>&gt;true&lt;/<span class="ck">training-feedback-eligible</span>&gt;
+&lt;/<span class="ck">ai-hallucination</span>&gt;</div>
+
+        <div class="section-label" style="margin-top:0.8rem">Hallucination Type Taxonomy</div>
+        <table class="rate-table">
+          <thead><tr><th>Type</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><span style="color:var(--warn);font-family:'Share Tech Mono',monospace;font-size:0.65rem">factual-invention</span></td><td>Fabricated fact with no basis</td></tr>
+            <tr><td><span style="color:var(--warn);font-family:'Share Tech Mono',monospace;font-size:0.65rem">confabulation</span></td><td>Plausible but wrong gap-filling</td></tr>
+            <tr><td><span style="color:var(--warn);font-family:'Share Tech Mono',monospace;font-size:0.65rem">citation-fabrication</span></td><td>Invented sources or URLs</td></tr>
+            <tr><td><span style="color:var(--warn);font-family:'Share Tech Mono',monospace;font-size:0.65rem">temporal-drift</span></td><td>Outdated info stated as current</td></tr>
+            <tr><td><span style="color:var(--warn);font-family:'Share Tech Mono',monospace;font-size:0.65rem">entity-confusion</span></td><td>Mixed up people, orgs, or places</td></tr>
+            <tr><td><span style="color:var(--warn);font-family:'Share Tech Mono',monospace;font-size:0.65rem">statistical-invention</span></td><td>Made-up numbers or percentages</td></tr>
+          </tbody>
+        </table>
+        <div class="endpoint"><span class="ep-method post">POST</span>/api/v1/ai-hallucination/classify</div>
+        <div class="endpoint"><span class="ep-method get">GET</span>/api/v1/ai-hallucination/taxonomy</div>
+      </div>
+
+      <div class="card purple-card">
+        <div class="card-hdr"><h3>ai-agent-trace</h3><span class="badge purple">Layer 2</span></div>
+        <div style="font-size:0.78rem;color:var(--text);margin-bottom:0.8rem;line-height:1.6">For multi-tool and agentic AI pipelines. Traces every tool call in the chain — which succeeded, which failed, which was skipped as a cascade result. Pinpoints exactly where in a chain the error originated.</div>
+        <div class="code-block">&lt;<span class="ck">ai-agent-trace</span> ref=<span class="cv">"ERR-X7K2-4F9A"</span>&gt;
+  &lt;<span class="ck">tool</span>
+    name=<span class="cv">"web-search"</span>
+    call-seq=<span class="cv">"1"</span>
+    status=<span class="cv">"ok"</span>
+    latency-ms=<span class="cv">"340"</span>
+  /&gt;
+  &lt;<span class="ck">tool</span>
+    name=<span class="cv">"code-interpreter"</span>
+    call-seq=<span class="cv">"2"</span>
+    status=<span class="cv">"failed"</span>
+    error=<span class="cv">"SyntaxError line 14"</span>
+    error-ref=<span class="cv">"ERR-X7K2-4F9A"</span>
+  /&gt;
+  &lt;<span class="ck">tool</span>
+    name=<span class="cv">"file-writer"</span>
+    call-seq=<span class="cv">"3"</span>
+    status=<span class="cv">"skipped"</span>
+    skip-reason=<span class="cv">"upstream-failure"</span>
+  /&gt;
+  &lt;<span class="ck">chain-broken-at</span>&gt;2&lt;/<span class="ck">chain-broken-at</span>&gt;
+  &lt;<span class="ck">total-tools"</span>&gt;3&lt;/<span class="ck">total-tools</span>&gt;
+&lt;/<span class="ck">ai-agent-trace</span>&gt;</div>
+        <div class="endpoint"><span class="ep-method post">POST</span>/api/v1/ai-agent-trace/log</div>
+        <div class="endpoint"><span class="ep-method get">GET</span>/api/v1/ai-agent-trace/{ref_id}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── LAYER 3 ── -->
+  <div class="section-label" style="color:var(--accent)">▸ LAYER 3 — GOVERNANCE & FIX</div>
+  <div class="two-col">
+    <div>
+      <div class="card">
+        <div class="card-hdr"><h3>ai-consent</h3><span class="badge">Layer 3</span></div>
+        <div style="font-size:0.78rem;color:var(--text);margin-bottom:0.8rem;line-height:1.6">Data governance and GDPR/CCPA compliance layer. Declares what data was used, user opt-out status, retention policy, and jurisdiction. Required for any error report shared externally or submitted to model developers.</div>
+        <div class="code-block">&lt;<span class="ck">ai-consent</span> ref=<span class="cv">"ERR-X7K2-4F9A"</span>&gt;
+  &lt;<span class="ck">data-used</span>&gt;user-provided only&lt;/<span class="ck">data-used</span>&gt;
+  &lt;<span class="ck">training-opt-out</span>&gt;true&lt;/<span class="ck">training-opt-out</span>&gt;
+  &lt;<span class="ck">retention-policy</span> days=<span class="cv">"30"</span> /&gt;
+  &lt;<span class="ck">jurisdiction</span>&gt;EU&lt;/<span class="ck">jurisdiction</span>&gt;
+  &lt;<span class="ck">gdpr-basis</span>&gt;legitimate-interest&lt;/<span class="ck">gdpr-basis</span>&gt;
+  &lt;<span class="ck">user-acknowledged"</span>&gt;true&lt;/<span class="ck">user-acknowledged</span>&gt;
+  &lt;<span class="ck">share-with-developer</span>&gt;true&lt;/<span class="ck">share-with-developer</span>&gt;
+  &lt;<span class="ck">share-anonymized-only</span>&gt;true&lt;/<span class="ck">share-anonymized-only</span>&gt;
+&lt;/<span class="ck">ai-consent</span>&gt;</div>
+        <div class="section-label" style="margin-top:0.8rem">Consent Fields</div>
+        <table class="rate-table">
+          <thead><tr><th>Field</th><th>Values</th><th>Required</th></tr></thead>
+          <tbody>
+            <tr><td style="font-family:'Share Tech Mono',monospace;font-size:0.65rem;color:var(--accent)">training-opt-out</td><td>true / false</td><td>Yes</td></tr>
+            <tr><td style="font-family:'Share Tech Mono',monospace;font-size:0.65rem;color:var(--accent)">jurisdiction</td><td>EU / US / CA / other</td><td>Yes</td></tr>
+            <tr><td style="font-family:'Share Tech Mono',monospace;font-size:0.65rem;color:var(--accent)">gdpr-basis</td><td>consent / legitimate-interest</td><td>If EU</td></tr>
+            <tr><td style="font-family:'Share Tech Mono',monospace;font-size:0.65rem;color:var(--accent)">retention-policy</td><td>days integer</td><td>Yes</td></tr>
+            <tr><td style="font-family:'Share Tech Mono',monospace;font-size:0.65rem;color:var(--accent)">share-anonymized-only</td><td>true / false</td><td>Yes</td></tr>
+          </tbody>
+        </table>
+        <div class="endpoint"><span class="ep-method post">POST</span>/api/v1/ai-consent/declare</div>
+        <div class="endpoint"><span class="ep-method get">GET</span>/api/v1/ai-consent/{ref_id}</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="card-hdr"><h3>ai-safety-flag</h3><span class="badge">Layer 3</span></div>
+        <div style="font-size:0.78rem;color:var(--text);margin-bottom:0.8rem;line-height:1.6">For failures that aren't accuracy errors but fairness, safety, or policy failures. Captures bias category, subcategory, detection method, and relevant policy reference.</div>
+        <div class="code-block">&lt;<span class="ck">ai-safety-flag</span>
+  ref=<span class="cv">"ERR-X7K2-4F9A"</span>
+  category=<span class="cv">"bias"</span>
+  subcategory=<span class="cv">"gender-stereotype"</span>
+  severity=<span class="cv">"medium"</span>
+  auto-detected=<span class="cv">"false"</span>
+&gt;
+  &lt;<span class="ck">flagged-by</span>&gt;user&lt;/<span class="ck">flagged-by</span>&gt;
+  &lt;<span class="ck">policy-ref</span>&gt;content-policy-v2.3#section-4&lt;/<span class="ck">policy-ref</span>&gt;
+  &lt;<span class="ck">affected-output-excerpt</span> redacted=<span class="cv">"false"</span>&gt;
+    &lt;!-- Quoted AI output that triggered flag --&gt;
+  &lt;/<span class="ck">affected-output-excerpt</span>&gt;
+  &lt;<span class="ck">recommended-action</span>&gt;escalate-to-safety-team&lt;/<span class="ck">recommended-action</span>&gt;
+&lt;/<span class="ck">ai-safety-flag</span>&gt;</div>
+        <div class="section-label" style="margin-top:0.8rem">Safety Flag Categories</div>
+        <span class="event-chip">bias.gender</span>
+        <span class="event-chip">bias.racial</span>
+        <span class="event-chip">bias.political</span>
+        <span class="event-chip">harm.self</span>
+        <span class="event-chip">harm.other</span>
+        <span class="event-chip">policy.refusal-incorrect</span>
+        <span class="event-chip">policy.over-restriction</span>
+        <span class="event-chip">privacy.exposure</span>
+        <span class="event-chip">manipulation.detected</span>
+        <span class="event-chip">misinformation</span>
+        <div class="endpoint" style="margin-top:0.8rem"><span class="ep-method post">POST</span>/api/v1/ai-safety-flag/report</div>
+        <div class="endpoint"><span class="ep-method get">GET</span>/api/v1/ai-safety-flag/categories</div>
+      </div>
+
+      <div class="card">
+        <div class="card-hdr"><h3>ai-remediation</h3><span class="badge">Layer 3</span></div>
+        <div style="font-size:0.78rem;color:var(--text);margin-bottom:0.8rem;line-height:1.6">Closes the loop. Records every fix attempt in sequence, what method was used, whether it worked, what model (if any) resolved it, and total time to resolution. The accountability closer.</div>
+        <div class="code-block">&lt;<span class="ck">ai-remediation</span> ref=<span class="cv">"ERR-X7K2-4F9A"</span>&gt;
+  &lt;<span class="ck">attempt</span>
+    seq=<span class="cv">"1"</span>
+    method=<span class="cv">"reprompt"</span>
+    result=<span class="cv">"failed"</span>
+    time-spent-min=<span class="cv">"5"</span>
+  /&gt;
+  &lt;<span class="ck">attempt</span>
+    seq=<span class="cv">"2"</span>
+    method=<span class="cv">"model-switch"</span>
+    switched-to=<span class="cv">"gpt-4o"</span>
+    result=<span class="cv">"failed"</span>
+    time-spent-min=<span class="cv">"3"</span>
+  /&gt;
+  &lt;<span class="ck">attempt</span>
+    seq=<span class="cv">"3"</span>
+    method=<span class="cv">"manual-correction"</span>
+    result=<span class="cv">"success"</span>
+    time-spent-min=<span class="cv">"12"</span>
+  /&gt;
+  &lt;<span class="ck">resolved</span>&gt;true&lt;/<span class="ck">resolved</span>&gt;
+  &lt;<span class="ck">resolution-time-min</span>&gt;20&lt;/<span class="ck">resolution-time-min</span>&gt;
+  &lt;<span class="ck">resolved-by</span>&gt;user&lt;/<span class="ck">resolved-by</span>&gt;
+&lt;/<span class="ck">ai-remediation</span>&gt;</div>
+        <div class="endpoint"><span class="ep-method post">POST</span>/api/v1/ai-remediation/log</div>
+        <div class="endpoint"><span class="ep-method post">POST</span>/api/v1/ai-remediation/{ref_id}/resolve</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CORE API REFERENCE ── -->
+  <div class="section-label" style="color:var(--accent)">▸ CORE API REFERENCE</div>
+  <div class="two-col">
+    <div>
+      <div class="card">
+        <div class="card-hdr"><h3>📚 Base URL & Auth</h3><span class="badge">v2.0</span></div>
+        <div class="code-block"><span class="cm">// Base URL</span>
+https://api.pir8eye.ai/troubleshooter/v2
+
+<span class="cm">// All requests require API key + XTML version</span>
+{
+  <span class="ck">"X-API-Key"</span>:      <span class="cv">"your_api_key"</span>,
+  <span class="ck">"Content-Type"</span>:   <span class="cv">"application/json"</span>,
+  <span class="ck">"AI-Version"</span>:     <span class="cv">"troubleshooter-2026.2"</span>,
+  <span class="ck">"XTML-Version"</span>:   <span class="cv">"2.0"</span>
+}</div>
+      </div>
+
+      <div class="card">
+        <div class="card-hdr"><h3>Rate Limits</h3><span class="badge warn">Per Minute</span></div>
+        <table class="rate-table">
+          <thead><tr><th>Endpoint</th><th>Limit</th></tr></thead>
+          <tbody>
+            <tr><td>ai-robotxt</td><td><span class="rate-num">1000</span> req/min</td></tr>
+            <tr><td>ai-errorlog</td><td><span class="rate-num">500</span> req/min</td></tr>
+            <tr><td>ai-reports</td><td><span class="rate-num">200</span> req/min</td></tr>
+            <tr><td>ai-anonymizer</td><td><span class="rate-num">100</span> req/min</td></tr>
+            <tr><td>ai-context</td><td><span class="rate-num">500</span> req/min</td></tr>
+            <tr><td>ai-provenance</td><td><span class="rate-num">300</span> req/min</td></tr>
+            <tr><td>ai-hallucination</td><td><span class="rate-num">200</span> req/min</td></tr>
+            <tr><td>ai-agent-trace</td><td><span class="rate-num">300</span> req/min</td></tr>
+            <tr><td>ai-consent</td><td><span class="rate-num">200</span> req/min</td></tr>
+            <tr><td>ai-safety-flag</td><td><span class="rate-num">100</span> req/min</td></tr>
+            <tr><td>ai-remediation</td><td><span class="rate-num">200</span> req/min</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="card-hdr"><h3>All Endpoints</h3><span class="badge">Quick Reference</span></div>
+
+        <div class="section-label">Layer 0</div>
+        <div class="endpoint"><span class="ep-method get">GET</span>/api/v2/ai-robotxt/check-access</div>
+        <div class="endpoint"><span class="ep-method post">POST</span>/api/v2/ai-robotxt/register-scraper</div>
+
+        <div class="section-label">Layer 1</div>
+        <div class="endpoint"><span class="ep-method post">POST</span>/api/v2/ai-errorlog/create</div>
+        <div class="endpoint"><span class="ep-method get">GET</span>/api/v2/ai-errorlog/{log_id}</div>
+        <div class="endpoint"><span class="ep-method post">POST</span>/api/v2/ai-reports/generate</div>
+        <div class="endpoint"><span class="ep-method post">POST</span>/api/v2/ai-reports/{id}/confirm</div>
+        <div class="endpoint"><span class="ep-method post">POST</span>/api/v2/ai-anonymizer/process</div>
+        <div class="endpoint"><span class="ep-method post">POST</span>/api/v2/ai-anonymizer/upload-to-github</div>
+
+        <div class="section-label">Layer 2</div>
+        <div class="endpoint"><span class="ep-method post">POST</span>/api/v2/ai-context/capture</div>
+        <div class="endpoint"><span class="ep-method post">POST</span>/api/v2/ai-provenance/log</div>
+        <div class="endpoint"><span class="ep-method post">POST</span>/api/v2/ai-hallucination/classify</div>
+        <div class="endpoint"><span class="ep-method get">GET</span>/api/v2/ai-hallucination/taxonomy</div>
+        <div class="endpoint"><span class="ep-method post">POST</span>/api/v2/ai-agent-trace/log</div>
+
+        <div class="section-label">Layer 3</div>
+        <div class="endpoint"><span class="ep-method post">POST</span>/api/v2/ai-consent/declare</div>
+        <div class="endpoint"><span class="ep-method post">POST</span>/api/v2/ai-safety-flag/report</div>
+        <div class="endpoint"><span class="ep-method get">GET</span>/api/v2/ai-safety-flag/categories</div>
+        <div class="endpoint"><span class="ep-method post">POST</span>/api/v2/ai-remediation/log</div>
+        <div class="endpoint"><span class="ep-method post">POST</span>/api/v2/ai-remediation/{ref_id}/resolve</div>
+
+        <div class="section-label">Webhooks</div>
+        <div class="endpoint"><span class="ep-method post">POST</span>/api/v2/webhooks/register</div>
+        <div class="endpoint"><span class="ep-method del">DEL</span>/api/v2/webhooks/{webhook_id}</div>
+      </div>
+
+      <div class="card">
+        <div class="card-hdr"><h3>Error Codes</h3><span class="badge warn">All Modules</span></div>
+        <div class="code-block"><span class="cw">AI_ROBOTXT_001</span>     → Access denied
+<span class="cw">AI_ROBOTXT_002</span>     → Agent not registered
+<span class="cw">AI_ERRORLOG_001</span>    → Invalid log format
+<span class="cw">AI_ERRORLOG_002</span>    → Hash mismatch
+<span class="cw">AI_REPORT_001</span>      → Generation failed
+<span class="cw">AI_REPORT_002</span>      → No linked errorlog
+<span class="cw">AI_ANON_001</span>        → Anonymization error
+<span class="cw">AI_ANON_002</span>        → PII still detected
+<span class="cw">AI_CONTEXT_001</span>     → Model state unavailable
+<span class="cw">AI_PROV_001</span>        → Turn sequence gap
+<span class="cw">AI_HALLUC_001</span>      → Unknown type
+<span class="cw">AI_AGENT_001</span>       → Tool trace incomplete
+<span class="cw">AI_CONSENT_001</span>     → Missing jurisdiction
+<span class="cw">AI_SAFETY_001</span>      → Invalid category
+<span class="cw">AI_REMED_001</span>       → No attempts logged
+<span class="cw">RATE_LIMIT_001</span>     → Too many requests
+<span class="cw">XTML_VERSION_001</span>   → Unsupported XTML version</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── WEBHOOK EVENTS ── -->
+  <div class="section-label" style="color:var(--purple)">▸ WEBHOOK EVENTS</div>
+  <div class="card">
+    <div class="card-hdr"><h3>All Subscribable Events</h3><span class="badge purple">Real-Time</span></div>
+    <div style="display:flex;gap:1.2rem;flex-wrap:wrap">
+      <div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:0.6rem;color:var(--muted);margin-bottom:0.5rem;text-transform:uppercase">Layer 1</div>
+        <span class="event-chip">error.created</span>
+        <span class="event-chip">report.generated</span>
+        <span class="event-chip">report.confirmed</span>
+        <span class="event-chip">anonymizer.completed</span>
+        <span class="event-chip">github.uploaded</span>
+      </div>
+      <div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:0.6rem;color:var(--muted);margin-bottom:0.5rem;text-transform:uppercase">Layer 2</div>
+        <span class="event-chip">context.captured</span>
+        <span class="event-chip">provenance.logged</span>
+        <span class="event-chip">hallucination.classified</span>
+        <span class="event-chip">agent.trace.failed</span>
+        <span class="event-chip">drift.detected</span>
+      </div>
+      <div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:0.6rem;color:var(--muted);margin-bottom:0.5rem;text-transform:uppercase">Layer 3</div>
+        <span class="event-chip">consent.declared</span>
+        <span class="event-chip">safety.flagged</span>
+        <span class="event-chip">remediation.attempted</span>
+        <span class="event-chip">remediation.resolved</span>
+        <span class="event-chip">robotxt.accessed</span>
+        <span class="event-chip">rate_limit.hit</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══ FOOTER ═════════════════════════════════════════════ -->
+<footer>
+  <span>© 2026 Pir8 Eye Web Solutions, LLC &nbsp;·&nbsp; AI Trouble Shooter API v1.0</span>
+  <span>BASE URL: <a href="#">https://api.pir8eye.ai/troubleshooter/v1</a></span>
+  <span>Anonymizer verified before every GitHub push &nbsp;·&nbsp; Timestamp chain on all exports</span>
+</footer>
+
+<!-- ═══════════════════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════════════════════ -->
+<script>
+// ─── State ───────────────────────────────────────────────────────────
+const S = {
+  sessionId: gid('SES'),
+  errorLog:  null,
+  report:    null,
+  confirmed: false,
+  anonApplied: false,
+  anonRules:   [],
+  robotxt:   null,
+};
+
+function gid(pfx) {
+  return `${pfx}-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
+}
+function ts() { return new Date().toISOString().replace('T',' ').slice(0,19)+' UTC'; }
+function fakehash() { return '0x'+Math.random().toString(16).slice(2,18); }
+
+// ─── Boot ─────────────────────────────────────────────────────────────
+document.getElementById('sess-id').textContent = S.sessionId;
+function clock() { document.getElementById('live-time').textContent = ts(); }
+clock(); setInterval(clock, 1000);
+
+// Tab nav
+document.querySelectorAll('.nav-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'export') updateSchema();
+  });
+});
+
+// ─── ai-errorlog ──────────────────────────────────────────────────────
+function logError() {
+  const model    = document.getElementById('el-model').value.trim();
+  const type     = document.getElementById('el-type').value;
+  const expected = document.getElementById('el-expected').value.trim();
+  const desc     = document.getElementById('el-desc').value.trim();
+  const severity = document.getElementById('el-severity').value;
+
+  if (!type || !desc) {
+    setOut('el-output', '<span class="c-warn">⚠ Select error type and describe the error before logging.</span>');
+    return;
+  }
+  const logId = gid('ERR');
+  const timestamp = ts();
+  const hash = fakehash();
+  S.errorLog = { logId, timestamp, model, type, expected, desc, severity, hash };
+  document.getElementById('rpt-logid').value = logId;
+
+  setOut('el-output',
+    `<span class="c-ok">✔ ERROR LOGGED</span>\n` +
+    `LOG_ID    : ${logId}\n` +
+    `TIMESTAMP : ${timestamp}\n` +
+    `MODEL     : ${model||'Not specified'}\n` +
+    `TYPE      : ${type}\n` +
+    `SEVERITY  : ${severity.toUpperCase()}\n` +
+    `HASH      : ${hash}\n` +
+    `STATUS    : <span class="c-ok">confirmed — as user experienced</span>\n` +
+    `─────────────────────────────────────────\n` +
+    `EXPECTED  : ${expected||'(not provided)'}\n` +
+    `ACTUAL    : ${desc.slice(0,280)}${desc.length>280?'…':''}`
+  );
+  updateSchema();
+}
+function clearError() {
+  S.errorLog = null;
+  setOut('el-output', '// Error log cleared.');
+  document.getElementById('rpt-logid').value = '';
+  updateSchema();
+}
+
+// ─── ai-reports ───────────────────────────────────────────────────────
+function generateReport() {
+  if (!S.errorLog) { setOut('rpt-output', '<span class="c-warn">⚠ Log an error first (AI-Errorlog tab).</span>'); return; }
+
+  const type     = document.getElementById('rpt-type').value;
+  const timeLost = document.getElementById('rpt-time').value || '?';
+  const value    = document.getElementById('rpt-value').value.trim() || 'Not specified';
+  const workflow = document.getElementById('rpt-workflow').value.trim() || 'Not specified';
+  const res      = document.getElementById('rpt-resolution').value.trim() || 'None attempted';
+  const rptId    = gid('RPT');
+
+  S.report = { rptId, type, timeLost, value, workflow, res, confirmed: false, timestamp: ts() };
+
+  setOut('rpt-output',
+    `<span class="c-ok">✔ REPORT GENERATED</span>\n` +
+    `REPORT_ID : ${rptId}\n` +
+    `LINKED    : ${S.errorLog.logId}\n` +
+    `TYPE      : ${type.toUpperCase()}\n` +
+    `GENERATED : ${S.report.timestamp}\n` +
+    `─────────────────────────────────────────\n` +
+    `TIME LOST : ${timeLost} minutes\n` +
+    `VALUE     : ${value}\n` +
+    `WORKFLOW  : ${workflow.slice(0,120)}${workflow.length>120?'…':''}\n` +
+    `RESOLUTION: ${res}\n` +
+    `─────────────────────────────────────────\n` +
+    `CONFIRMED : <span class="c-warn">AWAITING USER CONFIRMATION</span>\n` +
+    `<span class="c-dim">→ Click "Confirm Report" to finalize.</span>`
+  );
+  updateSchema();
+}
+
+function confirmReport() {
+  if (!S.report) { setOut('rpt-output', '<span class="c-warn">⚠ Generate a report first.</span>'); return; }
+  S.report.confirmed = true;
+  S.confirmed = true;
+  const box = document.getElementById('rpt-output');
+  box.innerHTML = box.innerHTML
+    .replace('AWAITING USER CONFIRMATION', '<span class="c-ok">CONFIRMED ✔</span>')
+    .replace('→ Click "Confirm Report" to finalize.', '');
+  box.innerHTML += `\n<span class="c-ok">✔ Confirmed by user at ${ts()}</span>`;
+  updateSchema();
+}
+
+// ─── ai-anonymizer ────────────────────────────────────────────────────
+function runAnonymizer() {
+  let text = document.getElementById('anon-input').value;
+  if (!text.trim()) { document.getElementById('anon-output').innerHTML = '// <span class="c-warn">No text provided to anonymize.</span>'; return; }
+
+  const rules = [];
+  if (document.getElementById('anon-names').checked) {
+    text = text.replace(/\b[A-Z][a-z]+ [A-Z][a-z]+\b/g, '<span class="c-warn">████████</span>');
+    rules.push('names');
+  }
+  if (document.getElementById('anon-email').checked) {
+    text = text.replace(/[\w.+-]+@[\w-]+\.[\w.]+/g, '<span class="c-warn">███@███.███</span>');
+    rules.push('email');
+  }
+  if (document.getElementById('anon-ip').checked) {
+    text = text.replace(/\b\d{1,3}(\.\d{1,3}){3}\b/g, '<span class="c-warn">█.█.█.█</span>');
+    rules.push('ip');
+  }
+  if (document.getElementById('anon-company').checked) {
+    text = text.replace(/\b[A-Z][A-Za-z]+(,? (LLC|Inc\.|Corp\.|Ltd\.|Co\.))/g, '<span class="c-warn">████</span> $2');
+    rules.push('company');
+  }
+  if (document.getElementById('anon-url').checked) {
+    text = text.replace(/https?:\/\/[^\s]+/g, '<span class="c-warn">https://███████</span>');
+    rules.push('urls');
+  }
+
+  const level = document.getElementById('anon-level').value;
+  const dest  = document.getElementById('anon-dest').value;
+  S.anonApplied = true;
+  S.anonRules   = rules;
+
+  document.getElementById('anon-output').innerHTML =
+    `<span class="c-ok">✔ ANONYMIZED</span>  |  LEVEL: ${level.toUpperCase()}  |  DEST: ${dest}\n` +
+    `RULES     : ${rules.join(', ')||'none selected'}\n` +
+    `HASH      : ${fakehash()}\n` +
+    `GITHUB    : ${dest==='github'?'<span class="c-ok">READY</span>':'<span class="c-dim">N/A</span>'}\n` +
+    `─────────────────────────────────────────\n` + text;
+
+  updateSchema();
+}
+
+function approveGithub() {
+  if (!S.anonApplied) {
+    document.getElementById('anon-output').innerHTML += '\n\n<span class="c-warn">⚠ Run anonymizer first before approving GitHub upload.</span>';
+    return;
+  }
+  document.getElementById('anon-output').innerHTML +=
+    `\n\n<span class="c-ok">✔ APPROVED FOR GITHUB UPLOAD</span>\n` +
+    `TIME      : ${ts()}\n` +
+    `COMMIT    : ${fakehash()}\n` +
+    `PRIVACY   : VERIFIED\n` +
+    `STATUS    : <span class="c-ok">SAFE TO COMMIT</span>`;
+}
+
+// ─── ai-robotxt ───────────────────────────────────────────────────────
+function generateRobotxt() {
+  const allow      = document.getElementById('rt-allow').value.trim();
+  const deny       = document.getElementById('rt-deny').value.trim();
+  const directive  = document.getElementById('rt-directive').value;
+  const compliance = document.getElementById('rt-compliance').value;
+
+  const allowArr = allow ? allow.split('\n').map(s=>s.trim()).filter(Boolean) : [];
+  const denyArr  = deny  ? deny.split('\n').map(s=>s.trim()).filter(Boolean) : [];
+  S.robotxt = { directive, compliance, allow: allowArr, deny: denyArr };
+
+  setOut('rt-output',
+    `<span class="c-ok">✔ ai-robotxt GENERATED</span>\n` +
+    `DIRECTIVE  : ${directive}\n` +
+    `COMPLIANCE : ${compliance.toUpperCase()}\n` +
+    `VERSION    : ai-robots/2.0\n` +
+    `─────────────────────────────────────────\n` +
+    `&lt;ai-robotxt&gt;\n` +
+    `  directive: "${directive}"\n` +
+    `  compliance: "${compliance}"\n` +
+    `  if (ai_scraper) {\n` +
+    `    allow: [${allowArr.map(a=>`"${a}"`).join(', ')||'// none specified'}]\n` +
+    `    deny:  [${denyArr.map(d=>`"${d}"`).join(', ')||'// none specified'}]\n` +
+    `  } else {\n` +
+    `    apply: robot.txt ToS rules\n` +
+    `  }\n` +
+    `&lt;/ai-robotxt&gt;`
+  );
+  updateSchema();
+}
+
+function testRobotxtAccess() {
+  const directive = document.getElementById('rt-directive').value;
+  const granted   = directive !== 'closed';
+  setOut('rt-access-output',
+    `<span class="${granted?'c-ok':'c-warn'}">` +
+    `${granted?'✔':'✕'} ACCESS ${granted?'GRANTED':'DENIED'}</span>\n` +
+    `TIMESTAMP   : ${ts()}\n` +
+    `USER-AGENT  : SimulatedAIScraper/1.0\n` +
+    `PATH        : /api/v1/reports\n` +
+    `DIRECTIVE   : ${directive}\n` +
+    `RATE_LIMIT  : 1000/min\n` +
+    `VERSION     : ai-robots/2.0\n` +
+    `REGISTRATION: ${gid('REG')}`
+  );
+}
+
+// ─── Export ───────────────────────────────────────────────────────────
+function buildPayload() {
+  return {
+    session_id: S.sessionId,
+    timestamp:  ts(),
+    ai_errorlog: S.errorLog || {},
+    ai_reports:  S.report   || {},
+    ai_anonymizer: { applied: S.anonApplied, rules: S.anonRules, level: document.getElementById('anon-level')?.value || 'standard' },
+    ai_robotxt: S.robotxt || { directive: 'selective', allow: [], deny: [] }
+  };
+}
+
+function escXml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function dl(content, name, mime) {
+  const b = new Blob([content], { type: mime });
+  const u = URL.createObjectURL(b);
+  const a = document.createElement('a'); a.href = u; a.download = name; a.click();
+  URL.revokeObjectURL(u);
+}
+
+function exportAs(fmt) {
+  const p  = buildPayload();
+  const el = p.ai_errorlog;
+  const rp = p.ai_reports;
+  const out = document.getElementById('export-out');
+
+  if (fmt === 'JSON') {
+    const j = JSON.stringify(p, null, 2);
+    out.innerHTML = `<span class="c-ok">✔ JSON DOWNLOADED</span>\n${j.slice(0,400)}…`;
+    dl(j, 'ai-troubleshooter-report.json', 'application/json');
+
+  } else if (fmt === 'XML') {
+    const x =
+`<?xml version="1.0" encoding="UTF-8"?>
+<AITroubleShooterReport>
+  <SessionId>${p.session_id}</SessionId>
+  <Timestamp>${p.timestamp}</Timestamp>
+  <AIErrorLog>
+    <LogId>${el.logId||''}</LogId>
+    <Model>${escXml(el.model||'')}</Model>
+    <ErrorType>${escXml(el.type||'')}</ErrorType>
+    <Severity>${el.severity||''}</Severity>
+    <ExpectedBehavior>${escXml(el.expected||'')}</ExpectedBehavior>
+    <ActualBehavior>${escXml(el.desc||'')}</ActualBehavior>
+    <Hash>${el.hash||''}</Hash>
+  </AIErrorLog>
+  <AIReports>
+    <ReportId>${rp.rptId||''}</ReportId>
+    <TimeLostMin>${rp.timeLost||0}</TimeLostMin>
+    <ValueImpact>${escXml(rp.value||'')}</ValueImpact>
+    <WorkflowLost>${escXml(rp.workflow||'')}</WorkflowLost>
+    <Confirmed>${rp.confirmed||false}</Confirmed>
+  </AIReports>
+  <AIAnonymizer applied="${p.ai_anonymizer.applied}" rules="${p.ai_anonymizer.rules.join(',')}"/>
+  <AIRobotxt directive="${p.ai_robotxt.directive}"/>
+</AITroubleShooterReport>`;
+    out.innerHTML = `<span class="c-ok">✔ XML DOWNLOADED</span>\n${x.slice(0,380)}…`;
+    dl(x, 'ai-troubleshooter-report.xml', 'application/xml');
+
+  } else if (fmt === 'XTML') {
+    const x =
+`<!-- AI Trouble Shooter Report — XTML Format -->
+<!-- ai-tagged markup for machine + human reading -->
+<!-- Generated: ${p.timestamp} -->
+
+<ai-errorlog id="${el.logId||''}" timestamp="${el.timestamp||''}" severity="${el.severity||''}">
+  <model>${escXml(el.model||'')}</model>
+  <error-type>${escXml(el.type||'')}</error-type>
+  <expected-behavior>${escXml(el.expected||'')}</expected-behavior>
+  <actual-behavior>${escXml(el.desc||'')}</actual-behavior>
+  <verification-hash>${el.hash||''}</verification-hash>
+  <confirmed-by-user>true</confirmed-by-user>
+</ai-errorlog>
+
+<ai-reports linked="${el.logId||''}" id="${rp.rptId||''}">
+  <time-lost unit="minutes">${rp.timeLost||0}</time-lost>
+  <value-impact>${escXml(rp.value||'')}</value-impact>
+  <workflow-lost>${escXml(rp.workflow||'')}</workflow-lost>
+  <resolution>${escXml(rp.res||'')}</resolution>
+  <confirmed>${rp.confirmed||false}</confirmed>
+</ai-reports>
+
+<ai-anonymizer applied="${p.ai_anonymizer.applied}" level="${p.ai_anonymizer.level}" rules="${p.ai_anonymizer.rules.join(',')}"/>
+
+<ai-robotxt directive="${p.ai_robotxt.directive}">
+  <allow>${(p.ai_robotxt.allow||[]).map(a=>`<path>${escXml(a)}</path>`).join('')}</allow>
+  <deny>${(p.ai_robotxt.deny||[]).map(d=>`<path>${escXml(d)}</path>`).join('')}</deny>
+</ai-robotxt>`;
+    out.innerHTML = `<span class="c-ok">✔ XTML DOWNLOADED</span>\n${x.slice(0,380)}…`;
+    dl(x, 'ai-troubleshooter-report.xtml', 'text/plain');
+
+  } else if (fmt === 'CSV') {
+    const c =
+`session_id,timestamp,log_id,model,error_type,severity,report_id,time_lost_min,value_impact,confirmed,anon_applied,directive
+"${p.session_id}","${p.timestamp}","${el.logId||''}","${el.model||''}","${el.type||''}","${el.severity||''}","${rp.rptId||''}","${rp.timeLost||0}","${rp.value||''}","${rp.confirmed||false}","${p.ai_anonymizer.applied}","${p.ai_robotxt.directive}"`;
+    out.innerHTML = `<span class="c-ok">✔ CSV DOWNLOADED</span>\n${c}`;
+    dl(c, 'ai-troubleshooter-report.csv', 'text/csv');
+
+  } else if (fmt === 'PDF') {
+    out.innerHTML = `<span class="c-ok">✔ OPENING PRINT DIALOG — Save as PDF</span>\nSession : ${p.session_id}\nTime    : ${p.timestamp}\nError   : ${el.type||'N/A'} [${el.severity||'N/A'}]\nModel   : ${el.model||'N/A'}\nReport  : ${rp.timeLost||0}min lost · ${rp.value||'N/A'}`;
+    window.print();
+  }
+}
+
+function copyPayload() {
+  navigator.clipboard.writeText(JSON.stringify(buildPayload(), null, 2)).then(() => {
+    setOut('export-out', '<span class="c-ok">✔ Full JSON payload copied to clipboard!</span>');
+  });
+}
+
+// ─── Webhook ──────────────────────────────────────────────────────────
+function registerWebhook() {
+  const url = document.getElementById('wh-url').value.trim();
+  const sec = document.getElementById('wh-secret').value.trim();
+  if (!url) { setOut('wh-out', '<span class="c-warn">⚠ Enter a webhook URL.</span>'); return; }
+  setOut('wh-out',
+    `<span class="c-ok">✔ WEBHOOK REGISTERED</span>\n` +
+    `WEBHOOK_ID : ${gid('WH')}\n` +
+    `URL        : ${url}\n` +
+    `EVENTS     : error.created, report.generated, anonymizer.completed, github.uploaded\n` +
+    `SECRET     : ${sec ? sec.slice(0,4)+'***' : '(none)'}\n` +
+    `STATUS     : <span class="c-ok">ACTIVE</span>\n` +
+    `VERIFIED   : ${ts()}`
+  );
+}
+
+// ─── Live Schema ──────────────────────────────────────────────────────
+function updateSchema() {
+  const el = S.errorLog || {};
+  const rp = S.report   || {};
+  const rt = S.robotxt  || {};
+
+  document.getElementById('live-schema').innerHTML =
+    `<span class="sc">// AI Trouble Shooter API v1.0\n// POST /api/v1/report  ·  Session: ${S.sessionId}</span>\n{\n` +
+    `  <span class="sk">"session_id"</span>: <span class="sv">"${S.sessionId}"</span>,\n` +
+    `  <span class="sk">"timestamp"</span>:  <span class="sv">"${ts()}"</span>,\n` +
+    `  <span class="sk">"ai_errorlog"</span>: {\n` +
+    `    <span class="sk">"log_id"</span>:            <span class="sv">"${el.logId||'pending'}"</span>,\n` +
+    `    <span class="sk">"model"</span>:             <span class="sv">"${el.model||'...'}"</span>,\n` +
+    `    <span class="sk">"error_type"</span>:        <span class="sv">"${el.type||'...'}"</span>,\n` +
+    `    <span class="sk">"severity"</span>:          <span class="sv">"${el.severity||'...'}"</span>,\n` +
+    `    <span class="sk">"error_hash"</span>:        <span class="sv">"${el.hash||'...'}"</span>,\n` +
+    `    <span class="sk">"confirmed_by_user"</span>: <span class="sv">${!!el.logId}</span>\n  },\n` +
+    `  <span class="sk">"ai_reports"</span>: {\n` +
+    `    <span class="sk">"report_id"</span>:    <span class="sv">"${rp.rptId||'pending'}"</span>,\n` +
+    `    <span class="sk">"type"</span>:         <span class="sv">"${rp.type||'...'}"</span>,\n` +
+    `    <span class="sk">"time_lost"</span>:    <span class="sv">${rp.timeLost||0}</span>,\n` +
+    `    <span class="sk">"value_impact"</span>: <span class="sv">"${rp.value||'...'}"</span>,\n` +
+    `    <span class="sk">"confirmed"</span>:    <span class="sv">${S.confirmed}</span>\n  },\n` +
+    `  <span class="sk">"ai_anonymizer"</span>: {\n` +
+    `    <span class="sk">"applied"</span>: <span class="sv">${S.anonApplied}</span>,\n` +
+    `    <span class="sk">"rules"</span>:   <span class="sv">[${S.anonRules.map(r=>`"${r}"`).join(', ')}]</span>\n  },\n` +
+    `  <span class="sk">"ai_robotxt"</span>: {\n` +
+    `    <span class="sk">"directive"</span>:   <span class="sv">"${rt.directive||'selective'}"</span>,\n` +
+    `    <span class="sk">"compliance"</span>:  <span class="sv">"${rt.compliance||'moderate'}"</span>,\n` +
+    `    <span class="sk">"allow"</span>:       <span class="sv">[${(rt.allow||[]).map(a=>`"${a}"`).join(', ')}]</span>,\n` +
+    `    <span class="sk">"deny"</span>:        <span class="sv">[${(rt.deny||[]).map(d=>`"${d}"`).join(', ')}]</span>\n  }\n}`;
+}
+
+// ─── XTML Spec Download ───────────────────────────────────────────────
+function downloadXTMLSpec() {
+  const spec = `XTML — eXtensible Troubleshooting Markup Language
+SPECIFICATION v2.0 DRAFT
+Pir8 Eye Web Solutions, LLC
+Release: 2026-02-19
+================================================================================
+
+OVERVIEW
+--------
+XTML is a post-AI expansion tag standard for capturing, classifying, governing,
+and transmitting AI behavioral data. It extends pre-AI automation protocols
+(robots.txt, XML error logs) into a structured lifecycle standard.
+
+BASE URL: https://api.pir8eye.ai/troubleshooter/v2
+XTML-Version header: "2.0"
+
+================================================================================
+LIFECYCLE LAYERS
+================================================================================
+
+LAYER 0 — ACCESS CONTROL
+  ai-robotxt       Post-AI expansion of robots.txt. Per-agent permissions,
+                   compliance tiers, allow/deny paths, rate limits.
+
+LAYER 1 — ERROR CAPTURE
+  ai-errorlog      Timestamped, hash-verified capture of AI failures.
+  ai-reports       Quantifies time lost, value impact, workflow disruption.
+  ai-anonymizer    PII scrubbing with hash chain. GitHub-ready output.
+
+LAYER 2 — CONTEXT & CAUSE
+  ai-context       Model state at failure: temp, tokens, context fill, tools.
+  ai-provenance    Conversation turn chain, drift detection, failure turn ID.
+  ai-hallucination False output taxonomy: type, confidence, source-check.
+  ai-agent-trace   Tool/agent call chain: status, latency, failure point.
+
+LAYER 3 — GOVERNANCE & FIX
+  ai-consent       GDPR/CCPA: opt-out, jurisdiction, retention, sharing.
+  ai-safety-flag   Bias, harm, policy failures with category + policy-ref.
+  ai-remediation   Fix attempts in sequence, resolution time, resolved-by.
+
+================================================================================
+TAG REFERENCE
+================================================================================
+
+<ai-robotxt version="2.0" directive="selective|open|closed">
+  <allow agent="*"><path>/allowed/path</path></allow>
+  <deny agent="*"><path>/denied/path</path></deny>
+  <compliance level="strict|moderate|permissive" />
+  <rate-limit requests="1000" per="minute" />
+</ai-robotxt>
+
+<!-- v2: per-agent identity blocks -->
+<agent name="string" purpose="string" compliance="string" expires="ISO date">
+  <allow><path>...</path></allow>
+  <deny><path>...</path></deny>
+</agent>
+
+--------------------------------------------------------------------------------
+
+<ai-errorlog id="ERR-*" timestamp="ISO" severity="low|medium|high|critical"
+             verified="true">
+  <model>string</model>
+  <error-type>string</error-type>
+  <expected-behavior>string</expected-behavior>
+  <actual-behavior>string</actual-behavior>
+  <verification-hash>0x...</verification-hash>
+  <confirmed-by-user>true|false</confirmed-by-user>
+</ai-errorlog>
+
+--------------------------------------------------------------------------------
+
+<ai-reports linked="ERR-*" id="RPT-*">
+  <time-lost unit="minutes">integer</time-lost>
+  <value-impact>string</value-impact>
+  <workflow-lost>string</workflow-lost>
+  <resolution>string</resolution>
+  <confirmed>true|false</confirmed>
+</ai-reports>
+
+--------------------------------------------------------------------------------
+
+<ai-anonymizer ref="RPT-*" level="basic|standard|maximum"
+               applied="true" original-hash="0x..." clean-hash="0x..."
+               github-ready="true" />
+
+--------------------------------------------------------------------------------
+
+<ai-context ref="ERR-*" model="string" temperature="float" top-p="float">
+  <token-count input="int" output="int" max="int" context-fill-pct="int" />
+  <system-prompt-hash>0x...</system-prompt-hash>
+  <api-version>string</api-version>
+  <tools-enabled>comma,separated,list</tools-enabled>
+</ai-context>
+
+--------------------------------------------------------------------------------
+
+<ai-provenance ref="ERR-*">
+  <turn seq="int" role="user|assistant" tokens="int"
+        flagged="true|false" error-ref="ERR-*"
+        context-drift="detected|none" drift-type="string" />
+  <total-turns>int</total-turns>
+  <drift-first-detected-at-turn>int</drift-first-detected-at-turn>
+</ai-provenance>
+
+--------------------------------------------------------------------------------
+
+<ai-hallucination ref="ERR-*" type="factual-invention|confabulation|
+  citation-fabrication|temporal-drift|entity-confusion|statistical-invention"
+  confidence="float" auto-detected="true|false">
+  <claimed>string</claimed>
+  <verified-fact>string</verified-fact>
+  <source-check status="failed|passed" citations-provided="int" />
+  <training-feedback-eligible>true|false</training-feedback-eligible>
+</ai-hallucination>
+
+--------------------------------------------------------------------------------
+
+<ai-agent-trace ref="ERR-*">
+  <tool name="string" call-seq="int" status="ok|failed|skipped"
+        latency-ms="int" error="string" skip-reason="string"
+        error-ref="ERR-*" />
+  <chain-broken-at>int</chain-broken-at>
+  <total-tools>int</total-tools>
+</ai-agent-trace>
+
+--------------------------------------------------------------------------------
+
+<ai-consent ref="ERR-*">
+  <data-used>user-provided|system|mixed</data-used>
+  <training-opt-out>true|false</training-opt-out>
+  <retention-policy days="int" />
+  <jurisdiction>EU|US|CA|other</jurisdiction>
+  <gdpr-basis>consent|legitimate-interest</gdpr-basis>
+  <user-acknowledged>true|false</user-acknowledged>
+  <share-with-developer>true|false</share-with-developer>
+  <share-anonymized-only>true|false</share-anonymized-only>
+</ai-consent>
+
+--------------------------------------------------------------------------------
+
+<ai-safety-flag ref="ERR-*"
+  category="bias|harm|policy|privacy|manipulation|misinformation"
+  subcategory="string" severity="low|medium|high|critical"
+  auto-detected="true|false">
+  <flagged-by>user|system|reviewer</flagged-by>
+  <policy-ref>string</policy-ref>
+  <affected-output-excerpt redacted="true|false">string</affected-output-excerpt>
+  <recommended-action>string</recommended-action>
+</ai-safety-flag>
+
+Safety Flag Categories:
+  bias.gender, bias.racial, bias.political
+  harm.self, harm.other
+  policy.refusal-incorrect, policy.over-restriction
+  privacy.exposure, manipulation.detected, misinformation
+
+--------------------------------------------------------------------------------
+
+<ai-remediation ref="ERR-*">
+  <attempt seq="int" method="reprompt|model-switch|manual-correction|
+    session-restart|prompt-engineering|other"
+    switched-to="string" result="success|failed"
+    time-spent-min="int" />
+  <resolved>true|false</resolved>
+  <resolution-time-min>int</resolution-time-min>
+  <resolved-by>user|ai|developer|support</resolved-by>
+</ai-remediation>
+
+================================================================================
+ERROR CODES
+================================================================================
+
+AI_ROBOTXT_001    Access denied
+AI_ROBOTXT_002    Agent not registered
+AI_ERRORLOG_001   Invalid log format
+AI_ERRORLOG_002   Hash mismatch
+AI_REPORT_001     Generation failed
+AI_REPORT_002     No linked errorlog
+AI_ANON_001       Anonymization error
+AI_ANON_002       PII still detected post-process
+AI_CONTEXT_001    Model state unavailable
+AI_PROV_001       Turn sequence gap
+AI_HALLUC_001     Unknown hallucination type
+AI_AGENT_001      Tool trace incomplete
+AI_CONSENT_001    Missing jurisdiction
+AI_SAFETY_001     Invalid safety flag category
+AI_REMED_001      No attempts logged
+RATE_LIMIT_001    Too many requests
+XTML_VERSION_001  Unsupported XTML version
+
+================================================================================
+WEBHOOK EVENTS
+================================================================================
+
+Layer 1: error.created, report.generated, report.confirmed,
+         anonymizer.completed, github.uploaded
+Layer 2: context.captured, provenance.logged, hallucination.classified,
+         agent.trace.failed, drift.detected
+Layer 3: consent.declared, safety.flagged, remediation.attempted,
+         remediation.resolved, robotxt.accessed, rate_limit.hit
+
+================================================================================
+© 2026 Pir8 Eye Web Solutions, LLC — XTML Specification v2.0 DRAFT
+All rights reserved. For licensing inquiries contact: legal@pir8eye.ai
+================================================================================`;
+
+  dl(spec, 'XTML-Specification-v2.0.txt', 'text/plain');
+  const out = document.getElementById('export-out');
+  if (out) out.innerHTML = '<span class="c-ok">✔ XTML Specification v2.0 downloaded as .txt</span>';
+}
+
+// ─── Utility ──────────────────────────────────────────────────────────
+function setOut(id, html) {
+  document.getElementById(id).innerHTML = html;
+}
+
+// Init
+updateSchema();
+</script>
+</body>
+</html>
